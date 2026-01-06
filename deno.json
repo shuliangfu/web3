@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.3",
+  "version": "1.0.4-beta.1",
   "license": "MIT",
   "exports": "./mod.ts",
   "publish": {
