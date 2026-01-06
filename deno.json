@@ -10,7 +10,6 @@
     "include": [
       "src/mod.ts",
       "src/client/mod.ts",
-      "constants.ts",
       "LICENSE.md",
       "README.md"
     ],

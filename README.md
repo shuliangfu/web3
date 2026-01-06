@@ -1,10 +1,10 @@
 # @dreamer/web3
 
-一个用于 Deno 的 Web3 操作辅助库，提供统一的 Web3 接口，支持服务端 RPC 调用和客户端钱包交互。
+服务端 Web3 操作辅助库，用于 Deno 运行时，支持 RPC 调用和合约交互。
 
 ## 功能
 
-Web3 操作辅助库，提供统一的 Web3 抽象层，支持服务端 RPC 调用和客户端钱包交互。
+服务端 Web3 操作辅助库，提供统一的 Web3 抽象层，支持 RPC 调用和合约交互。
 
 ## 特性
 
@@ -20,39 +20,21 @@ Web3 操作辅助库，提供统一的 Web3 抽象层，支持服务端 RPC 调�
   - 调用合约方法（需要私钥签名）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
+  - 合约代理功能（通过 `web3.contracts.合约名称` 访问）
 - **区块和交易**：
   - 区块信息查询
   - 交易信息查询
   - 交易收据查询
   - Gas 估算和费用查询
+- **消息签名和验证**：
+  - 使用私钥签名消息
+  - 验证消息签名
 - **工具函数**：
   - 单位转换（wei、ether 等）
   - 地址工具（验证、格式化、校验和）
   - 哈希工具（Keccak-256）
   - 十六进制工具
   - 合约工具（函数选择器、编码等）
-
-### 客户端 Web3（@dreamer/web3/client）
-
-- **钱包连接**：
-  - 自动检测和连接 EIP-1193 兼容钱包（MetaMask 等）
-  - 不需要设置 RPC URL，直接使用钱包提供的 RPC
-  - 账户连接和断开
-  - 账户列表获取
-- **钱包交互**：
-  - 发送交易（通过钱包签名）
-  - 消息签名和验证
-  - 合约交互（通过钱包签名）
-  - 交易确认等待
-- **事件监听**：
-  - 账户变化监听
-  - 链切换监听
-  - 区块监听
-  - 交易监听
-  - 合约事件监听
-- **工具函数**：
-  - 与服务端相同的工具函数
-  - 钱包生成（仅客户端，不推荐在生产环境使用）
 
 ## 设计原则
 
@@ -76,43 +58,26 @@ Web3 操作辅助库，提供统一的 Web3 抽象层，支持服务端 RPC 调�
 - **数据索引**：扫描区块、索引交易、分析链上数据
 - **后端服务**：提供链数据 API、合约查询服务
 
-### 客户端
-
-- **DApp 开发**：去中心化应用开发
-- **钱包集成**：集成 MetaMask 等钱包
-- **用户交互**：发送交易、签名消息、合约交互
-- **实时监听**：监听账户变化、链切换、合约事件
-
 ## 优先级
 
 ⭐⭐（特定场景）
 
 ## 安装
 
-### 服务端
-
 ```bash
 deno add jsr:@dreamer/web3
-```
-
-### 客户端
-
-```bash
-deno add jsr:@dreamer/web3/client
 ```
 
 ## 环境兼容性
 
 - **Deno 版本**：要求 Deno 2.5 或更高版本
 - **服务端**：✅ 支持（Deno 运行时，通过 RPC URL 连接区块链网络）
-- **客户端**：✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client` 使用钱包连接，不需要 RPC URL）
+- **客户端**：❌ 不支持（请使用 `jsr:@dreamer/web3/client`）
 - **依赖**：需要 `npm:viem@^2.43.3`
 
 ## 使用示例
 
-### 服务端 Web3
-
-#### 基本使用（RPC 调用）
+### 基本使用（RPC 调用）
 
 ```typescript
 import { Web3Client } from "jsr:@dreamer/web3";
@@ -134,7 +99,7 @@ const balance = await web3.getBalance("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
 console.log("余额:", balance);
 ```
 
-#### 合约交互（只读）
+### 合约交互（只读）
 
 ```typescript
 import { Web3Client } from "jsr:@dreamer/web3";
@@ -161,7 +126,30 @@ const result = await web3.readContract({
 console.log("总供应量:", result);
 ```
 
-#### 交易查询
+### 合约代理功能
+
+```typescript
+import { Web3Client } from "jsr:@dreamer/web3";
+
+// 配置合约
+const usdtContract = {
+  name: "USDT",
+  address: "0xe52de483b5B089B4CBF01c2749Dfbf4Fa66CBda6",
+  abi: [/* ABI 数组 */]
+};
+
+const web3 = new Web3Client({
+  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  contracts: usdtContract, // 单个合约
+  // 或 contracts: [usdtContract, nodeContract], // 多个合约
+});
+
+// 通过合约名称访问
+const balance = await web3.contracts.USDT.readContract("balanceOf", ["0x..."]);
+await web3.contracts.USDT.callContract("transfer", ["0x...", "1000000"]);
+```
+
+### 交易查询
 
 ```typescript
 import { Web3Client } from "jsr:@dreamer/web3";
@@ -183,7 +171,7 @@ const confirmedReceipt = await web3.waitForTransaction("0x...", 3); // 等待 3 
 console.log("交易已确认:", confirmedReceipt);
 ```
 
-#### 区块查询
+### 区块查询
 
 ```typescript
 import { Web3Client } from "jsr:@dreamer/web3";
@@ -205,7 +193,7 @@ const transactions = await web3.getBlockTransactions(1000000, true);
 console.log("区块交易:", transactions);
 ```
 
-#### 事件监听（通过 RPC）
+### 事件监听（通过 RPC）
 
 ```typescript
 import { Web3Client } from "jsr:@dreamer/web3";
@@ -237,151 +225,35 @@ unsubscribe();
 unsubscribeEvent();
 ```
 
-### 客户端 Web3
-
-#### 基本使用（钱包连接）
+### 消息签名和验证
 
 ```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
+import { Web3Client } from "jsr:@dreamer/web3";
 
-// 创建 Web3Client 实例（不需要 RPC URL，直接使用钱包）
-const web3 = new Web3Client();
-
-// 连接钱包（自动检测 MetaMask 等钱包）
-const accounts = await web3.connectWallet();
-console.log("已连接账户:", accounts);
-
-// 获取当前账户
-const currentAccounts = await web3.getAccounts();
-console.log("当前账户:", currentAccounts);
-
-// 获取链信息（使用钱包提供的 RPC）
-const chainId = await web3.getChainId();
-console.log("链 ID:", chainId);
-```
-
-#### 发送交易（通过钱包）
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-
-// 先连接钱包
-await web3.connectWallet();
-
-// 发送 ETH（通过钱包签名）
-const txHash = await web3.sendTransaction({
-  to: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-  value: "1000000000000000000", // 1 ETH
+const web3 = new Web3Client({
+  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  privateKey: "0x...", // 可选，也可以在调用时传入
 });
 
-console.log("交易哈希:", txHash);
-
-// 等待交易确认
-const receipt = await web3.waitForTransaction(txHash, 1);
-console.log("交易已确认:", receipt);
-```
-
-#### 合约交互（通过钱包）
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-
-// 先连接钱包
-await web3.connectWallet();
-
-// 读取合约数据（只读方法，不需要签名）
-const result = await web3.readContract({
-  address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC 合约
-  abi: [...],
-  functionName: "balanceOf",
-  args: ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"],
-});
-
-console.log("余额:", result);
-
-// 调用合约方法（写入操作，需要钱包签名）
-const receipt = await web3.callContract({
-  address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  abi: [...],
-  functionName: "transfer",
-  args: ["0x...", "1000000"], // 转账地址和金额
-}, true); // 等待确认
-
-console.log("交易收据:", receipt);
-```
-
-#### 消息签名
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-
-// 先连接钱包
-await web3.connectWallet();
-
-// 签名消息
+// 签名消息（使用配置中的 privateKey）
 const message = "Hello, Web3!";
 const signature = await web3.signMessage(message);
-console.log("签名:", signature);
+
+// 或使用参数传入私钥
+const signature2 = await web3.signMessage(message, "0x...");
 
 // 验证签名
-const accounts = await web3.getAccounts();
-const isValid = await web3.verifyMessage(message, signature, accounts[0]);
+const address = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+const isValid = await web3.verifyMessage(message, signature, address);
 console.log("签名有效:", isValid);
 ```
 
-#### 事件监听
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-
-// 监听账户变化
-web3.onAccountsChanged((accounts) => {
-  console.log("账户变化:", accounts);
-  if (accounts.length === 0) {
-    console.log("钱包已断开");
-  }
-});
-
-// 监听链切换
-web3.onChainChanged((chainId) => {
-  console.log("链切换:", chainId);
-  // 可以在这里更新 UI
-});
-
-// 监听新区块
-web3.onBlock((blockNumber, block) => {
-  console.log("新区块:", blockNumber);
-});
-
-// 监听合约事件
-const unsubscribe = web3.onContractEvent(
-  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  "Transfer",
-  (event) => {
-    console.log("Transfer 事件:", event);
-  }
-);
-
-// 取消监听
-unsubscribe();
-```
-
-### 工具函数（服务端和客户端通用）
+### 工具函数
 
 #### 单位转换
 
 ```typescript
 import { fromWei, toWei } from "jsr:@dreamer/web3/mod";
-// 或客户端
-// import { fromWei, toWei } from "jsr:@dreamer/web3/client";
 
 // 从 wei 转换为 ether
 const eth = fromWei("1000000000000000000", "ether"); // "1.0"
@@ -503,6 +375,20 @@ const contractAddress = computeContractAddress(
 - `getAddressTransactions(address, fromBlock?, toBlock?)`: 获取地址相关的交易
 - `scanContractMethodTransactions(...)`: 扫描合约方法调用交易
 
+#### 合约代理
+
+- `contracts[合约名称]`: 通过合约名称访问合约代理
+  - `readContract(functionName, args?)`: 读取合约数据
+  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
+  - `address`: 获取合约地址
+  - `abi`: 获取合约 ABI
+  - `name`: 获取合约名称
+
+#### 消息签名方法
+
+- `signMessage(message, privateKey?)`: 签名消息（使用私钥），返回签名
+- `verifyMessage(message, signature, address)`: 验证消息签名
+
 #### 事件监听方法
 
 - `onBlock(callback)`: 监听新区块（通过轮询），返回取消监听的函数
@@ -512,77 +398,12 @@ const contractAddress = computeContractAddress(
 - `onContractEvent(contractAddress, eventName, callback, options?)`: 监听合约事件（通过 RPC 轮询），返回取消监听的函数
 - `offContractEvent(contractAddress, eventName?)`: 停止合约事件监听
 
-### 客户端 Web3Client 类
+### 工具函数
 
-#### 钱包方法
-
-- `connectWallet()`: 连接钱包，返回账户地址数组（不需要 RPC URL）
-- `getAccounts()`: 获取当前连接的账户地址数组
-- `disconnectWallet()`: 断开钱包连接
-
-#### 账户和余额方法
-
-- `getBalance(address)`: 获取账户余额（wei，字符串格式）
-- `getBalances(addresses)`: 批量获取多个账户余额
-- `getTransactionCount(address)`: 获取账户交易计数（nonce）
-
-#### 网络和链信息方法
-
-- `getChainId()`: 获取当前链 ID（使用钱包提供的 RPC）
-- `getNetwork()`: 获取网络信息（chainId 和 name）
-- `getBlockNumber()`: 获取当前区块号
-
-#### 交易方法
-
-- `sendTransaction(options)`: 发送交易（通过钱包签名），返回交易哈希
-- `waitForTransaction(txHash, confirmations?)`: 等待交易确认，返回交易收据
-- `getTransaction(txHash)`: 获取交易信息
-- `getTransactionReceipt(txHash)`: 获取交易收据
-- `estimateGas(options)`: 估算交易 gas 消耗
-- `getGasPrice()`: 获取当前 gas 价格
-- `getGasLimit(blockNumber?)`: 获取区块 gas 限制
-- `getFeeData()`: 获取费用数据（gasPrice 和 maxFeePerGas）
-
-#### 区块方法
-
-- `getBlock(blockNumber?)`: 获取区块信息
-- `getBlockTransactions(blockNumber, includeTransactions?)`: 获取区块中的交易
-
-#### 合约方法
-
-- `readContract(options)`: 读取合约数据（只读方法）
-- `callContract(options, waitForConfirmation?)`: 调用合约方法（通过钱包签名），返回交易收据
-- `getCode(address)`: 获取合约字节码
-- `isContract(address)`: 检查地址是否为合约
-
-#### 消息签名方法
-
-- `signMessage(message)`: 签名消息，返回签名
-- `verifyMessage(message, signature, address)`: 验证消息签名
-
-#### 事件监听方法
-
-- `onBlock(callback)`: 监听新区块，返回取消监听的函数
-- `offBlock()`: 停止所有区块监听
-- `onTransaction(callback)`: 监听新交易，返回取消监听的函数
-- `offTransaction()`: 停止所有交易监听
-- `onContractEvent(contractAddress, eventName, callback, options?)`: 监听合约事件，返回取消监听的函数
-- `offContractEvent(contractAddress, eventName?)`: 停止合约事件监听
-- `onAccountsChanged(callback)`: 监听账户变化，返回取消监听的函数
-- `offAccountsChanged()`: 停止账户变化监听
-- `onChainChanged(callback)`: 监听链切换，返回取消监听的函数
-- `offChainChanged()`: 停止链切换监听
-
-### 工具函数（服务端和客户端通用）
-
-工具函数在服务端和客户端都可以使用，导入路径不同：
+工具函数在服务端可以使用，导入路径：
 
 ```typescript
-// 服务端
 import { fromWei, toWei, isAddress } from "jsr:@dreamer/web3/mod";
-
-// 客户端
-import { fromWei, toWei, isAddress } from "jsr:@dreamer/web3/client";
 ```
 
 #### 单位转换
@@ -614,42 +435,22 @@ import { fromWei, toWei, isAddress } from "jsr:@dreamer/web3/client";
 - `padLeft(value, length, padChar?)`: 左填充
 - `padRight(value, length, padChar?)`: 右填充
 
-#### 钱包工具
-
-- `generateWallet()`: 生成新的钱包地址和私钥（仅客户端，不推荐在生产环境使用）
-- `isPrivateKey(privateKey)`: 验证私钥格式
-- `isTxHash(txHash)`: 验证交易哈希格式
-
 #### 合约工具
 
-- `getCode(address, rpcUrl?)`: 获取合约代码（服务端需要 rpcUrl，客户端不需要）
+- `getCode(address, rpcUrl?)`: 获取合约代码（服务端需要 rpcUrl）
 - `computeContractAddress(deployerAddress, nonce)`: 计算合约地址（CREATE）
 - `getFunctionSelector(functionSignature)`: 获取函数选择器
 - `encodeFunctionCall(functionSignature, args)`: 编码函数调用数据
 
-## 服务端和客户端对比
+## 客户端文档
 
-| 功能 | 服务端（@dreamer/web3） | 客户端（@dreamer/web3/client） |
-|------|----------------------|-------------------------------|
-| **RPC URL** | ✅ 必须设置 | ❌ 不需要（使用钱包提供的 RPC） |
-| **钱包连接** | ❌ 不支持 | ✅ 支持（自动检测和连接） |
-| **发送交易** | ✅ 支持（需要私钥） | ✅ 支持（通过钱包签名） |
-| **消息签名** | ❌ 不支持 | ✅ 支持（通过钱包签名） |
-| **合约读取** | ✅ 支持 | ✅ 支持 |
-| **合约调用** | ✅ 支持（需要私钥） | ✅ 支持（通过钱包签名） |
-| **事件监听** | ✅ 支持（通过 RPC 轮询） | ✅ 支持（实时监听） |
-| **账户变化监听** | ❌ 不支持 | ✅ 支持 |
-| **链切换监听** | ❌ 不支持 | ✅ 支持 |
-
-## 状态
-
-🚧 **开发中**
+客户端 Web3 文档请查看：[src/client/README.md](./src/client/README.md)
 
 ## 备注
 
-- **服务端和客户端分离**：通过 `/client` 子路径明确区分服务端和客户端代码
-- **服务端**：专注于 RPC 调用、合约读取、数据查询，不需要钱包连接
-- **客户端**：专注于钱包交互、用户操作，不需要设置 RPC URL
-- **统一工具函数**：服务端和客户端都提供相同的工具函数
+- **服务端专用**：仅用于 Deno 运行时，不支持浏览器环境
+- **RPC 连接**：必须配置 RPC URL 才能使用
+- **合约代理**：支持通过 `web3.contracts.合约名称` 访问合约
+- **消息签名**：支持使用私钥签名和验证消息
 - **类型安全**：完整的 TypeScript 类型支持
 - **依赖**：需要 `npm:viem@^2.43.3`
