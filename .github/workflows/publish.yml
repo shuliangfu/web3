@@ -13,7 +13,5 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.ref }}
       - name: Publish package
         run: npx jsr publish --no-check
