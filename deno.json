@@ -1,11 +1,15 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "license": "MIT",
-  "exports": "./mod.ts",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./client": "./src/client/mod.ts"
+  },
   "publish": {
     "include": [
-      "mod.ts",
+      "src/mod.ts",
+      "src/client/mod.ts",
       "constants.ts",
       "LICENSE.md",
       "README.md"

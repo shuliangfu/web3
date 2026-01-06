@@ -1,19 +1,18 @@
 /**
- * Web3 操作辅助类
- * 提供 Web3 相关的操作功能，如钱包连接、合约交互、交易处理等
+ * Web3 操作辅助类（服务端版本）
+ * 提供 Web3 相关的操作功能，如 RPC 调用、合约交互、交易处理等
  *
  * 环境兼容性：
- * - 客户端：大部分功能需要在浏览器环境使用（需要钱包扩展如 MetaMask）
- * - 服务端：部分功能（如 RPC 调用、合约交互）可以在服务端使用
- * - 注意：钱包连接、签名等功能只能在客户端使用
+ * - 服务端：通过 RPC URL 连接区块链网络
+ * - 需要配置 rpcUrl 和 privateKey（用于发送交易）
+ * - 不支持钱包连接、消息签名等客户端功能
  *
  * API 使用说明：
- * - 本实现使用现代的 EIP-1193 标准（window.ethereum.request()）
- * - 不使用已弃用的 window.web3 API
- * - 使用 viem 库来与钱包和区块链交互
+ * - 使用 viem 库来与区块链交互
+ * - 通过 HTTP transport 连接 RPC 节点
  *
  * 依赖：
- * - 需要安装 viem: npm:viem@^2.43.4
+ * - 需要安装 viem: npm:viem@^2.43.5
  */
 
 // 导入 viem 核心模块
@@ -22,8 +21,6 @@ import {
   type Address,
   type Chain,
   createPublicClient,
-  createWalletClient,
-  custom,
   decodeFunctionData,
   encodeAbiParameters,
   encodeFunctionData,
@@ -43,26 +40,6 @@ import {
   generatePrivateKey,
   privateKeyToAccount,
 } from "npm:viem@^2.43.3/accounts";
-import { IS_CLIENT } from "./constants.ts";
-
-/**
- * 扩展 Window 接口以支持 ethereum
- * 注意：我们只使用 window.ethereum (EIP-1193)，不使用已弃用的 window.web3
- */
-interface WindowWithEthereum extends Window {
-  ethereum?: {
-    request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    on?: (event: string, callback: (...args: unknown[]) => void) => void;
-    removeListener?: (
-      event: string,
-      callback: (...args: unknown[]) => void,
-    ) => void;
-    // 明确排除已弃用的 web3 属性，避免意外访问
-    web3?: never;
-  };
-  // 明确排除已弃用的 window.web3，避免意外访问
-  web3?: never;
-}
 
 /**
  * 区块事件回调函数类型
@@ -86,16 +63,16 @@ export type TransactionListener = (
 export type ContractEventListener = (event: unknown) => void | Promise<void>;
 
 /**
- * 账户变化回调函数类型
+ * 合约配置接口
  */
-export type AccountsChangedListener = (
-  accounts: string[],
-) => void | Promise<void>;
-
-/**
- * 链切换回调函数类型
- */
-export type ChainChangedListener = (chainId: string) => void | Promise<void>;
+export interface ContractConfig {
+  /** 合约名称（用于访问，如 "USDT"、"Node"） */
+  name: string;
+  /** 合约地址 */
+  address: string;
+  /** 合约 ABI */
+  abi: Abi | Array<Record<string, unknown>>;
+}
 
 /**
  * Web3 配置选项
@@ -109,10 +86,12 @@ export interface Web3Config {
   network?: string;
   /** 私钥（可选，用于服务端操作） */
   privateKey?: string;
-  /** 合约 ABI */
+  /** 合约 ABI（已废弃，使用 contracts 配置） */
   abi?: Abi;
-  /** 合约地址 */
+  /** 合约地址（已废弃，使用 contracts 配置） */
   address?: string;
+  /** 合约配置（单个合约对象或合约数组） */
+  contracts?: ContractConfig | ContractConfig[];
 
   /** 其他配置选项 */
   [key: string]: unknown;
@@ -161,7 +140,7 @@ export interface ContractCallOptions {
   /** 函数签名（可选，如 "getUserInfo(address)"），如果不提供则自动推断 */
   functionSignature?: string;
   /** 完整 ABI（可选），如果提供则优先使用，如果未提供则使用配置中的 abi */
-  abi?: string[] | Abi;
+  abi?: string[] | Array<Record<string, unknown>> | Abi;
 }
 
 /**
@@ -185,6 +164,95 @@ export interface ContractReadOptions {
 }
 
 /**
+ * 合约代理类
+ * 提供通过合约名称访问合约的代理功能
+ */
+class ContractProxy {
+  private web3Client: Web3Client;
+  private contractConfig: ContractConfig;
+
+  constructor(web3Client: Web3Client, contractConfig: ContractConfig) {
+    this.web3Client = web3Client;
+    this.contractConfig = contractConfig;
+  }
+
+  /**
+   * 读取合约数据（只读操作）
+   * @param functionName 函数名
+   * @param args 函数参数（可选）
+   * @returns 函数返回值
+   */
+  async readContract(
+    functionName: string,
+    args?: unknown[],
+  ): Promise<unknown> {
+    return await this.web3Client.readContract({
+      address: this.contractConfig.address,
+      functionName,
+      args,
+      abi: this.contractConfig.abi as
+        | string[]
+        | Array<Record<string, unknown>>
+        | Abi,
+    });
+  }
+
+  /**
+   * 调用合约方法（写入操作）
+   * @param functionName 函数名
+   * @param args 函数参数（可选）
+   * @param waitForConfirmation 是否等待交易确认（默认 true）
+   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
+   */
+  async callContract(
+    functionName: string,
+    args?: unknown[],
+    waitForConfirmation: boolean = true,
+  ): Promise<unknown> {
+    return await this.web3Client.callContract(
+      {
+        address: this.contractConfig.address,
+        functionName,
+        args,
+        abi: this.contractConfig.abi as
+          | string[]
+          | Array<Record<string, unknown>>
+          | Abi,
+      },
+      waitForConfirmation,
+    );
+  }
+
+  /**
+   * 获取合约地址
+   */
+  get address(): string {
+    return this.contractConfig.address;
+  }
+
+  /**
+   * 获取合约 ABI
+   */
+  get abi(): Abi | Array<Record<string, unknown>> {
+    return this.contractConfig.abi;
+  }
+
+  /**
+   * 获取合约名称
+   */
+  get name(): string {
+    return this.contractConfig.name;
+  }
+}
+
+/**
+ * 合约代理对象类型
+ */
+type ContractsProxy = {
+  [contractName: string]: ContractProxy;
+};
+
+/**
  * Web3 操作类
  * 提供 Web3 相关的操作方法
  */
@@ -193,20 +261,16 @@ export class Web3Client {
   private publicClient: PublicClient | null = null;
   private walletClient: WalletClient | null = null;
   private chain: Chain | null = null;
+  // 合约代理对象
+  public readonly contracts: ContractsProxy;
   // 事件监听器存储
   private blockListeners: Set<BlockListener> = new Set();
   private transactionListeners: Set<TransactionListener> = new Set();
   private contractEventListeners: Map<string, Set<ContractEventListener>> =
     new Map();
-  private accountsChangedListeners: Set<AccountsChangedListener> = new Set();
-  private chainChangedListeners: Set<ChainChangedListener> = new Set();
   // 事件监听器是否已启动
   private blockListenerStarted: boolean = false;
   private transactionListenerStarted: boolean = false;
-  private walletListenersStarted: boolean = false;
-  // 钱包事件监听器的包装函数（用于移除）
-  private walletAccountsChangedWrapper?: (...args: unknown[]) => void;
-  private walletChainChangedWrapper?: (...args: unknown[]) => void;
   // viem watch 取消函数
   private blockWatchUnsubscribe?: () => void;
   private transactionWatchUnsubscribe?: () => void;
@@ -222,11 +286,35 @@ export class Web3Client {
   private contractReconnectAttempts: Map<string, number> = new Map();
 
   /**
-   * 创建 Web3 客户端实例
-   * @param config Web3 配置选项
+   * 创建 Web3 客户端实例（服务端版本）
+   * @param config Web3 配置选项（必须包含 rpcUrl）
    */
-  constructor(config: Web3Config = {}) {
+  constructor(config: Web3Config) {
+    if (!config.rpcUrl) {
+      throw new Error("服务端版本必须配置 rpcUrl");
+    }
     this.config = config;
+
+    // 初始化合约代理对象
+    const contractsProxy: ContractsProxy = {};
+    if (config.contracts) {
+      const contracts = Array.isArray(config.contracts)
+        ? config.contracts
+        : [config.contracts];
+      for (const contract of contracts) {
+        if (!contract.name) {
+          throw new Error("合约配置必须包含 name 字段");
+        }
+        if (!contract.address) {
+          throw new Error(`合约 ${contract.name} 必须包含 address 字段`);
+        }
+        if (!contract.abi) {
+          throw new Error(`合约 ${contract.name} 必须包含 abi 字段`);
+        }
+        contractsProxy[contract.name] = new ContractProxy(this, contract);
+      }
+    }
+    this.contracts = contractsProxy;
   }
 
   /**
@@ -251,8 +339,7 @@ export class Web3Client {
 
   /**
    * 获取或创建 PublicClient（懒加载）
-   * 在客户端环境中，如果检测到 window.ethereum，优先使用它
-   * 在服务端环境或没有 window.ethereum 时，使用 rpcUrl 创建 HTTP transport
+   * 服务端版本：使用 rpcUrl 创建 HTTP transport
    * @returns PublicClient 实例
    */
   private getPublicClient(): PublicClient {
@@ -260,33 +347,9 @@ export class Web3Client {
       return this.publicClient;
     }
 
-    // 客户端环境：优先使用 window.ethereum（MetaMask 等钱包）
-    if (IS_CLIENT) {
-      const win = globalThis.window as WindowWithEthereum;
-      if (win.ethereum) {
-        try {
-          // 使用 custom transport 从 window.ethereum 创建 public client
-          this.publicClient = createPublicClient({
-            transport: custom(win.ethereum),
-          });
-          return this.publicClient;
-        } catch (error) {
-          throw new Error(
-            `从钱包创建 PublicClient 失败: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-        }
-      }
-    }
-
-    // 如果没有 window.ethereum，检查是否配置了 rpcUrl
+    // 检查是否配置了 rpcUrl
     if (!this.config.rpcUrl) {
-      throw new Error(
-        IS_CLIENT
-          ? "未检测到钱包且 RPC URL 未配置，请连接钱包或设置 rpcUrl"
-          : "RPC URL 未配置，请设置 rpcUrl",
-      );
+      throw new Error("RPC URL 未配置，请设置 rpcUrl");
     }
 
     // 使用 HTTP transport 创建 PublicClient
@@ -306,6 +369,7 @@ export class Web3Client {
 
   /**
    * 获取或创建 WalletClient（懒加载）
+   * 服务端版本：需要 privateKey 创建账户
    * @returns WalletClient 实例
    */
   private getWalletClient(): WalletClient {
@@ -313,112 +377,19 @@ export class Web3Client {
       return this.walletClient;
     }
 
-    // 客户端环境：优先使用 window.ethereum
-    if (IS_CLIENT) {
-      const win = globalThis.window as WindowWithEthereum;
-      if (win.ethereum) {
-        try {
-          // 尝试获取 chain（从 PublicClient 或配置中）
-          let chain: Chain | undefined = this.chain || undefined;
-
-          // 如果还没有 chain，尝试从 PublicClient 获取
-          if (!chain) {
-            try {
-              const publicClient = this.getPublicClient();
-              chain = (publicClient as any).chain;
-              if (chain) {
-                this.chain = chain;
-              }
-            } catch {
-              // 如果获取失败，chain 保持为 undefined
-              // 注意：chain 将在调用 writeContract 时动态获取
-            }
-          }
-
-          this.walletClient = createWalletClient({
-            chain: chain,
-            transport: custom(win.ethereum),
-          });
-
-          // 如果 walletClient 有 chain 属性，保存它
-          if ((this.walletClient as any).chain && !this.chain) {
-            this.chain = (this.walletClient as any).chain;
-          }
-
-          return this.walletClient;
-        } catch (error) {
-          throw new Error(
-            `从钱包创建 WalletClient 失败: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-        }
-      }
-    }
-
-    // 如果没有 window.ethereum，检查是否配置了 rpcUrl 和 privateKey
+    // 检查是否配置了 rpcUrl 和 privateKey
     if (!this.config.rpcUrl || !this.config.privateKey) {
       throw new Error(
-        "未检测到钱包且 RPC URL 或私钥未配置，请连接钱包或设置 rpcUrl 和 privateKey",
+        "RPC URL 或私钥未配置，请设置 rpcUrl 和 privateKey",
       );
     }
 
-    // 注意：viem 的 WalletClient 需要账户，这里使用 privateKey 创建
-    // 但 viem 的 WalletClient 主要用于浏览器钱包，服务端需要使用不同的方式
+    // 注意：viem 的 WalletClient 主要用于浏览器钱包
+    // 服务端环境需要使用 privateKey 创建账户，但 viem 的 WalletClient 不支持直接使用 privateKey
+    // 这里抛出错误，提示用户使用其他方式（如直接使用 viem 的账户功能）
     throw new Error(
-      "服务端环境需要使用 privateKey 创建账户，请使用其他方式",
+      "服务端环境需要使用 privateKey 创建账户，请使用 viem 的账户功能或其他方式",
     );
-  }
-
-  /**
-   * 连接钱包（浏览器环境）
-   * @returns 钱包地址数组
-   */
-  async connectWallet(): Promise<string[]> {
-    if (!IS_CLIENT) {
-      return [];
-    }
-
-    const win = globalThis.window as WindowWithEthereum;
-    if (!win.ethereum) {
-      throw new Error("未检测到钱包，请安装 MetaMask 或其他 Web3 钱包");
-    }
-
-    try {
-      const accounts = await win.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      return accounts as string[];
-    } catch (error) {
-      throw new Error(
-        `连接钱包失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  }
-
-  /**
-   * 获取当前连接的账户地址
-   * @returns 账户地址数组
-   */
-  async getAccounts(): Promise<string[]> {
-    if (typeof globalThis !== "undefined" && "window" in globalThis) {
-      const win = globalThis.window as WindowWithEthereum;
-      if (!win.ethereum) {
-        return [];
-      }
-
-      try {
-        const accounts = await win.ethereum.request({
-          method: "eth_accounts",
-        });
-        return accounts as string[];
-      } catch {
-        return [];
-      }
-    }
-    return [];
   }
 
   /**
@@ -817,61 +788,6 @@ export class Web3Client {
       // 其他错误直接抛出
       throw new Error(
         `读取合约失败: ${errorMessage}`,
-      );
-    }
-  }
-
-  /**
-   * 签名消息
-   * @param message 要签名的消息
-   * @returns 签名结果
-   */
-  async signMessage(message: string): Promise<string> {
-    const walletClient = this.getWalletClient();
-    const accounts = await walletClient.getAddresses();
-    if (accounts.length === 0) {
-      throw new Error("未找到可用账户，请先连接钱包");
-    }
-
-    try {
-      const signature = await walletClient.signMessage({
-        account: accounts[0],
-        message,
-      });
-      return signature;
-    } catch (error) {
-      throw new Error(
-        `签名消息失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  }
-
-  /**
-   * 验证消息签名
-   * @param message 原始消息
-   * @param signature 签名
-   * @param address 签名者地址
-   * @returns 是否验证通过
-   */
-  async verifyMessage(
-    message: string,
-    signature: string,
-    address: string,
-  ): Promise<boolean> {
-    try {
-      const isValid = await viemVerifyMessage({
-        address: address as Address,
-        message,
-        signature: signature as Hex,
-      });
-      return isValid;
-    } catch (error) {
-      throw new Error(
-        `验证签名失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
       );
     }
   }
@@ -1645,169 +1561,6 @@ export class Web3Client {
     }
   }
 
-  /**
-   * 监听账户变化（钱包环境）
-   * @param callback 回调函数，接收账户地址数组
-   * @returns 取消监听的函数
-   */
-  onAccountsChanged(callback: AccountsChangedListener): () => void {
-    this.accountsChangedListeners.add(callback);
-
-    // 如果还没有启动监听，则启动
-    if (!this.walletListenersStarted) {
-      this.startWalletListeners();
-    }
-
-    // 返回取消监听的函数
-    return () => {
-      this.accountsChangedListeners.delete(callback);
-      // 如果没有监听器了，停止监听
-      if (
-        this.accountsChangedListeners.size === 0 &&
-        this.chainChangedListeners.size === 0
-      ) {
-        this.stopWalletListeners();
-      }
-    };
-  }
-
-  /**
-   * 监听链切换（钱包环境）
-   * @param callback 回调函数，接收链 ID（十六进制字符串）
-   * @returns 取消监听的函数
-   */
-  onChainChanged(callback: ChainChangedListener): () => void {
-    this.chainChangedListeners.add(callback);
-
-    // 如果还没有启动监听，则启动
-    if (!this.walletListenersStarted) {
-      this.startWalletListeners();
-    }
-
-    // 返回取消监听的函数
-    return () => {
-      this.chainChangedListeners.delete(callback);
-      // 如果没有监听器了，停止监听
-      if (
-        this.accountsChangedListeners.size === 0 &&
-        this.chainChangedListeners.size === 0
-      ) {
-        this.stopWalletListeners();
-      }
-    };
-  }
-
-  /**
-   * 启动钱包事件监听
-   */
-  private startWalletListeners(): void {
-    if (this.walletListenersStarted) {
-      return;
-    }
-
-    if (typeof globalThis !== "undefined" && "window" in globalThis) {
-      const win = globalThis.window as WindowWithEthereum;
-      if (!win.ethereum || !win.ethereum.on) {
-        return;
-      }
-
-      this.walletListenersStarted = true;
-
-      // 创建包装函数用于账户变化监听
-      this.walletAccountsChangedWrapper = (...args: unknown[]) => {
-        const accounts = args[0] as string[];
-        for (const listener of this.accountsChangedListeners) {
-          try {
-            Promise.resolve(listener(accounts)).catch((error) => {
-              console.error("[Web3Client] 账户变化监听器错误:", error);
-            });
-          } catch (error) {
-            console.error("[Web3Client] 账户变化监听器错误:", error);
-          }
-        }
-      };
-
-      // 创建包装函数用于链切换监听
-      this.walletChainChangedWrapper = (...args: unknown[]) => {
-        const chainId = args[0] as string;
-
-        // 清除 publicClient 和 walletClient 缓存，避免使用旧的网络信息
-        // viem 在网络切换时需要重新创建客户端，清除缓存可以避免这个问题
-        this.publicClient = null;
-        this.walletClient = null;
-
-        for (const listener of this.chainChangedListeners) {
-          try {
-            Promise.resolve(listener(chainId)).catch((error) => {
-              console.error("[Web3Client] 链切换监听器错误:", error);
-            });
-          } catch (error) {
-            console.error("[Web3Client] 链切换监听器错误:", error);
-          }
-        }
-      };
-
-      // 监听账户变化
-      win.ethereum.on("accountsChanged", this.walletAccountsChangedWrapper);
-
-      // 监听链切换
-      win.ethereum.on("chainChanged", this.walletChainChangedWrapper);
-    }
-  }
-
-  /**
-   * 停止钱包事件监听
-   */
-  private stopWalletListeners(): void {
-    if (!this.walletListenersStarted) {
-      return;
-    }
-
-    if (typeof globalThis !== "undefined" && "window" in globalThis) {
-      const win = globalThis.window as WindowWithEthereum;
-      if (win.ethereum && win.ethereum.removeListener) {
-        // 移除账户变化监听器
-        if (this.walletAccountsChangedWrapper) {
-          win.ethereum.removeListener(
-            "accountsChanged",
-            this.walletAccountsChangedWrapper,
-          );
-          this.walletAccountsChangedWrapper = undefined;
-        }
-        // 移除链切换监听器
-        if (this.walletChainChangedWrapper) {
-          win.ethereum.removeListener(
-            "chainChanged",
-            this.walletChainChangedWrapper,
-          );
-          this.walletChainChangedWrapper = undefined;
-        }
-      }
-    }
-
-    this.walletListenersStarted = false;
-  }
-
-  /**
-   * 取消所有账户变化监听
-   */
-  offAccountsChanged(): void {
-    this.accountsChangedListeners.clear();
-    if (this.chainChangedListeners.size === 0) {
-      this.stopWalletListeners();
-    }
-  }
-
-  /**
-   * 取消所有链切换监听
-   */
-  offChainChanged(): void {
-    this.chainChangedListeners.clear();
-    if (this.accountsChangedListeners.size === 0) {
-      this.stopWalletListeners();
-    }
-  }
-
   // ==================== 其他常用方法 ====================
 
   /**
@@ -1877,6 +1630,64 @@ export class Web3Client {
   async getChainId(): Promise<number> {
     const network = await this.getNetwork();
     return network.chainId;
+  }
+
+  /**
+   * 签名消息（服务端版本，使用私钥）
+   * @param message 要签名的消息
+   * @param privateKey 私钥（可选，如果未提供则使用配置中的 privateKey）
+   * @returns 签名结果
+   */
+  async signMessage(message: string, privateKey?: string): Promise<string> {
+    const key = privateKey || this.config.privateKey;
+    if (!key) {
+      throw new Error(
+        "私钥未提供，请在参数中提供 privateKey 或在配置中设置 privateKey",
+      );
+    }
+
+    try {
+      // 使用 viem 的 privateKeyToAccount 创建账户
+      const account = privateKeyToAccount(key as Hex);
+
+      // 使用账户签名消息
+      const signature = await account.signMessage({ message });
+      return signature;
+    } catch (error) {
+      throw new Error(
+        `签名消息失败: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  /**
+   * 验证消息签名
+   * @param message 原始消息
+   * @param signature 签名
+   * @param address 签名者地址
+   * @returns 是否验证通过
+   */
+  async verifyMessage(
+    message: string,
+    signature: string,
+    address: string,
+  ): Promise<boolean> {
+    try {
+      const isValid = await viemVerifyMessage({
+        address: address as Address,
+        message,
+        signature: signature as Hex,
+      });
+      return isValid;
+    } catch (error) {
+      throw new Error(
+        `验证签名失败: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /**
