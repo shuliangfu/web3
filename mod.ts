@@ -2891,3 +2891,4 @@ export function encodeFunctionCall(
     );
   }
 }
+
