@@ -2,6 +2,10 @@
 
 客户端 Web3 操作辅助库，用于浏览器环境，支持钱包连接和交互。
 
+## 服务端支持
+
+服务端 Web3 支持请查看 [服务端文档](../../README.md)。
+
 ## 功能
 
 客户端 Web3 操作辅助库，提供统一的 Web3 抽象层，支持钱包连接和交互。
@@ -32,12 +36,13 @@
 
 ## 设计原则
 
-**所有 @dreamer/* 库都遵循以下原则**：
+__所有 @dreamer/_ 库都遵循以下原则_*：
 
 - **主包（@dreamer/xxx）**：用于服务端（Deno 运行时）
 - **客户端子包（@dreamer/xxx/client）**：用于客户端（浏览器环境）
 
 这样可以：
+
 - 明确区分服务端和客户端代码
 - 避免在客户端代码中引入服务端依赖
 - 提供更好的类型安全和代码提示
@@ -66,7 +71,8 @@ deno add jsr:@dreamer/web3/client
 
 - **Deno 版本**：要求 Deno 2.5 或更高版本
 - **服务端**：❌ 不支持（仅用于浏览器环境）
-- **客户端**：✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client` 使用钱包连接，不需要 RPC URL）
+- **客户端**：✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client`
+  使用钱包连接，不需要 RPC URL）
 - **依赖**：需要 `npm:viem@^2.43.3`
 
 ## 使用示例
@@ -155,7 +161,7 @@ import { Web3Client } from "jsr:@dreamer/web3/client";
 const usdtContract = {
   name: "USDT",
   address: "0xe52de483b5B089B4CBF01c2749Dfbf4Fa66CBda6",
-  abi: [/* ABI 数组 */]
+  abi: [/* ABI 数组 */],
 };
 
 const web3 = new Web3Client({
@@ -224,7 +230,7 @@ const unsubscribe = web3.onContractEvent(
   "Transfer",
   (event) => {
     console.log("Transfer 事件:", event);
-  }
+  },
 );
 
 // 取消监听
@@ -249,16 +255,18 @@ const wei = toWei("1", "ether"); // "1000000000000000000"
 
 ```typescript
 import {
-  isAddress,
-  toChecksumAddress,
   formatAddress,
+  isAddress,
   shortenAddress,
+  toChecksumAddress,
 } from "jsr:@dreamer/web3/client";
 
 // 验证地址
 if (isAddress("0x742d35cc6634c0532925a3b844bc9e7595f0beb")) {
   // 转换为校验和地址
-  const checksum = toChecksumAddress("0x742d35cc6634c0532925a3b844bc9e7595f0beb");
+  const checksum = toChecksumAddress(
+    "0x742d35cc6634c0532925a3b844bc9e7595f0beb",
+  );
   // "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
 
   // 格式化地址
@@ -282,7 +290,7 @@ console.log(hash);
 // Solidity Keccak-256 哈希（处理 ABI 编码）
 const solidityHash = solidityKeccak256(
   ["address", "uint256"],
-  ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "1000000"]
+  ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "1000000"],
 );
 ```
 
@@ -290,9 +298,9 @@ const solidityHash = solidityKeccak256(
 
 ```typescript
 import {
-  getFunctionSelector,
-  encodeFunctionCall,
   computeContractAddress,
+  encodeFunctionCall,
+  getFunctionSelector,
 } from "jsr:@dreamer/web3/client";
 
 // 获取函数选择器
@@ -308,7 +316,7 @@ const data = encodeFunctionCall("transfer(address,uint256)", [
 // 计算合约地址（CREATE）
 const contractAddress = computeContractAddress(
   "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-  0 // nonce
+  0, // nonce
 );
 ```
 
@@ -353,7 +361,8 @@ const contractAddress = computeContractAddress(
 #### 合约方法
 
 - `readContract(options)`: 读取合约数据（只读方法）
-- `callContract(options, waitForConfirmation?)`: 调用合约方法（通过钱包签名），返回交易收据
+- `callContract(options, waitForConfirmation?)`:
+  调用合约方法（通过钱包签名），返回交易收据
 - `getCode(address)`: 获取合约字节码
 - `isContract(address)`: 检查地址是否为合约
 
@@ -377,7 +386,8 @@ const contractAddress = computeContractAddress(
 - `offBlock()`: 停止所有区块监听
 - `onTransaction(callback)`: 监听新交易，返回取消监听的函数
 - `offTransaction()`: 停止所有交易监听
-- `onContractEvent(contractAddress, eventName, callback, options?)`: 监听合约事件，返回取消监听的函数
+- `onContractEvent(contractAddress, eventName, callback, options?)`:
+  监听合约事件，返回取消监听的函数
 - `offContractEvent(contractAddress, eventName?)`: 停止合约事件监听
 - `onAccountsChanged(callback)`: 监听账户变化，返回取消监听的函数
 - `offAccountsChanged()`: 停止账户变化监听
@@ -389,7 +399,7 @@ const contractAddress = computeContractAddress(
 工具函数在客户端可以使用，导入路径：
 
 ```typescript
-import { fromWei, toWei, isAddress } from "jsr:@dreamer/web3/client";
+import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 ```
 
 #### 单位转换
