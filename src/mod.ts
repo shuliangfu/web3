@@ -22,6 +22,7 @@ import {
   type Chain,
   createPublicClient,
   decodeFunctionData,
+  encodeFunctionData,
   type Hash,
   type Hex,
   http,
@@ -30,9 +31,10 @@ import {
   type PublicClient,
   verifyMessage as viemVerifyMessage,
   type WalletClient,
-} from "npm:viem@^2.43.5";
+  webSocket,
+} from "viem";
 // 导入 viem 账户模块（用于生成钱包）
-import { privateKeyToAccount } from "npm:viem@^2.43.3/accounts";
+import { privateKeyToAccount } from "viem/accounts";
 
 /**
  * 区块事件回调函数类型
@@ -252,8 +254,11 @@ type ContractsProxy = {
 export class Web3Client {
   private config: Web3Config;
   private publicClient: PublicClient | null = null;
+  private wsClient: PublicClient | null = null; // WebSocket client，用于事件监听
+  private wsTransport: ReturnType<typeof webSocket> | null = null; // WebSocket transport，用于主动关闭连接
   private walletClient: WalletClient | null = null;
   private chain: Chain | null = null;
+  private isDestroying: boolean = false; // 标记是否正在销毁，用于防止重复销毁
   // 合约代理对象
   public readonly contracts: ContractsProxy;
   // 事件监听器存储
@@ -361,6 +366,48 @@ export class Web3Client {
   }
 
   /**
+   * 获取或创建 WebSocket PublicClient（懒加载）
+   * 用于事件监听，提供实时推送
+   * @returns PublicClient 实例（使用 WebSocket transport）
+   */
+  private getWsClient(): PublicClient {
+    if (this.wsClient) {
+      return this.wsClient;
+    }
+
+    // 优先使用 wssUrl，如果没有则尝试从 rpcUrl 转换，或使用 wss 配置
+    const wssUrl = (this.config as any).wssUrl ||
+      (this.config as any).wss ||
+      (this.config.rpcUrl?.replace(/^http:/, "ws:").replace(/^https:/, "wss:"));
+
+    if (!wssUrl) {
+      // 如果没有 WebSocket URL，回退到 HTTP client（不推荐，但兼容）
+      console.warn(
+        "[Web3Client] 未配置 WebSocket URL，事件监听将使用 HTTP 轮询（性能较差）",
+      );
+      return this.getPublicClient();
+    }
+
+    // 使用 WebSocket transport 创建 PublicClient
+    try {
+      // 保存 transport 引用，以便后续可以关闭连接
+      this.wsTransport = webSocket(wssUrl, { keepAlive: { interval: 10000 } });
+      this.wsClient = createPublicClient({
+        transport: this.wsTransport,
+      });
+      return this.wsClient;
+    } catch (error) {
+      console.warn(
+        `[Web3Client] 创建 WebSocket PublicClient 失败，回退到 HTTP: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      // 如果 WebSocket 创建失败，回退到 HTTP
+      return this.getPublicClient();
+    }
+  }
+
+  /**
    * 获取或创建 WalletClient（懒加载）
    * 服务端版本：需要 privateKey 创建账户
    * @returns WalletClient 实例
@@ -428,39 +475,98 @@ export class Web3Client {
   }
 
   /**
-   * 发送交易
+   * 发送交易（服务端版本，使用 sendRawTransaction）
    * @param options 交易选项
    * @returns 交易哈希
    */
   async sendTransaction(options: TransactionOptions): Promise<string> {
-    const walletClient = this.getWalletClient();
-    const accounts = await walletClient.getAddresses();
-    if (accounts.length === 0) {
-      throw new Error("未找到可用账户，请先连接钱包");
+    // 检查是否配置了私钥
+    if (!this.config.privateKey) {
+      throw new Error(
+        "私钥未配置，服务端环境需要使用 privateKey 来签名和发送交易",
+      );
     }
 
     try {
-      // 构建交易参数（EIP-1559 或 legacy）
-      const txParams: any = {
-        account: accounts[0],
+      // 确保私钥有 0x 前缀
+      const formattedPrivateKey = this.config.privateKey.startsWith("0x")
+        ? this.config.privateKey
+        : ("0x" + this.config.privateKey);
+      // 使用私钥创建账户
+      const account = privateKeyToAccount(formattedPrivateKey as Hex);
+      const client = this.getPublicClient();
+
+      // 获取链 ID（用于 EIP-155 签名）
+      const chainId = await client.getChainId();
+
+      // 获取 nonce（如果未提供）
+      let nonce = options.nonce;
+      if (nonce === undefined) {
+        nonce = await this.getTransactionCount(account.address);
+      }
+
+      // 获取 gas 价格（如果未提供）
+      let gasPrice: bigint | undefined;
+      let maxFeePerGas: bigint | undefined;
+      let maxPriorityFeePerGas: bigint | undefined;
+
+      if (options.maxFeePerGas) {
+        // EIP-1559 交易
+        maxFeePerGas = BigInt(options.maxFeePerGas.toString());
+        maxPriorityFeePerGas = options.maxPriorityFeePerGas
+          ? BigInt(options.maxPriorityFeePerGas.toString())
+          : undefined;
+      } else if (options.gasPrice) {
+        // Legacy 交易
+        gasPrice = BigInt(options.gasPrice.toString());
+      } else {
+        // 自动获取 gas 价格
+        try {
+          const feeData = await this.getFeeData();
+          if (feeData.maxFeePerGas) {
+            // 使用 EIP-1559
+            maxFeePerGas = BigInt(feeData.maxFeePerGas);
+            maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
+              ? BigInt(feeData.maxPriorityFeePerGas)
+              : undefined;
+          } else if (feeData.gasPrice) {
+            // 使用 Legacy
+            gasPrice = BigInt(feeData.gasPrice);
+          }
+        } catch (error) {
+          // 如果获取失败，使用默认值
+          console.warn("获取 gas 价格失败，使用默认值:", error);
+        }
+      }
+
+      // 构建交易对象
+      const transaction: any = {
         to: options.to as Address,
         value: options.value ? BigInt(options.value.toString()) : undefined,
         data: options.data as Hex | undefined,
         gas: options.gasLimit ? BigInt(options.gasLimit.toString()) : undefined,
-        nonce: options.nonce,
+        nonce,
+        chainId,
       };
 
-      // 如果提供了 maxFeePerGas，使用 EIP-1559；否则使用 gasPrice（legacy）
-      if (options.maxFeePerGas) {
-        txParams.maxFeePerGas = BigInt(options.maxFeePerGas.toString());
-        txParams.maxPriorityFeePerGas = options.maxPriorityFeePerGas
-          ? BigInt(options.maxPriorityFeePerGas.toString())
-          : undefined;
-      } else if (options.gasPrice) {
-        txParams.gasPrice = BigInt(options.gasPrice.toString());
+      // 添加 gas 价格信息
+      if (maxFeePerGas) {
+        transaction.maxFeePerGas = maxFeePerGas;
+        if (maxPriorityFeePerGas) {
+          transaction.maxPriorityFeePerGas = maxPriorityFeePerGas;
+        }
+      } else if (gasPrice) {
+        transaction.gasPrice = gasPrice;
       }
 
-      const hash = await walletClient.sendTransaction(txParams);
+      // 使用账户签名交易
+      const signedTransaction = await account.signTransaction(transaction);
+
+      // 使用 sendRawTransaction 发送已签名的交易（通过 PublicClient）
+      const hash = await client.sendRawTransaction({
+        serializedTransaction: signedTransaction,
+      });
+
       return hash;
     } catch (error) {
       throw new Error(
@@ -498,7 +604,7 @@ export class Web3Client {
   }
 
   /**
-   * 调用合约方法（写入操作）
+   * 调用合约方法（写入操作，服务端版本，使用 sendRawTransaction）
    * @param options 合约调用选项
    * @param waitForConfirmation 是否等待交易确认（默认 true）
    * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
@@ -507,10 +613,11 @@ export class Web3Client {
     options: ContractCallOptions,
     waitForConfirmation: boolean = true,
   ): Promise<unknown> {
-    const walletClient = this.getWalletClient();
-    const accounts = await walletClient.getAddresses();
-    if (accounts.length === 0) {
-      throw new Error("未找到可用账户，请先连接钱包");
+    // 检查是否配置了私钥
+    if (!this.config.privateKey) {
+      throw new Error(
+        "私钥未配置，服务端环境需要使用 privateKey 来签名和发送交易",
+      );
     }
 
     try {
@@ -550,34 +657,96 @@ export class Web3Client {
         ]);
       }
 
-      // 获取 chain（优先从 walletClient 获取，否则使用 this.chain）
-      let chain: Chain | undefined = (walletClient as any).chain ||
-        this.chain || undefined;
+      // 确保私钥有 0x 前缀
+      const formattedPrivateKey = this.config.privateKey.startsWith("0x")
+        ? this.config.privateKey
+        : ("0x" + this.config.privateKey);
+      // 使用私钥创建账户
+      const account = privateKeyToAccount(formattedPrivateKey as Hex);
+      const client = this.getPublicClient();
 
-      // 如果还是没有 chain，尝试从 PublicClient 获取
-      const network = await this.getNetwork();
-      chain = {
-        id: Number(network.chainId.toString()),
-        name: network.name,
-      } as unknown as Chain;
+      // 获取链 ID（用于 EIP-155 签名）
+      const chainId = await client.getChainId();
 
-      // 如果还是没有 chain，抛出明确的错误
-      if (!chain) {
-        throw new Error(
-          "无法获取链信息，请在配置中设置 chainId 或确保钱包已连接",
-        );
-      }
+      // 获取 nonce
+      const nonce = await this.getTransactionCount(account.address);
 
-      // 发送交易
-      const hash = await walletClient.writeContract({
-        account: accounts[0],
-        address: contractAddress as Address,
+      // 编码函数调用数据
+      const data = encodeFunctionData({
         abi: parsedAbi,
         functionName: options.functionName,
         args: options.args as any,
+      });
+
+      // 获取 gas 价格（如果未提供）
+      let gasPrice: bigint | undefined;
+      let maxFeePerGas: bigint | undefined;
+      let maxPriorityFeePerGas: bigint | undefined;
+
+      try {
+        const feeData = await this.getFeeData();
+        if (feeData.maxFeePerGas) {
+          // 使用 EIP-1559
+          maxFeePerGas = BigInt(feeData.maxFeePerGas);
+          maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
+            ? BigInt(feeData.maxPriorityFeePerGas)
+            : undefined;
+        } else if (feeData.gasPrice) {
+          // 使用 Legacy
+          gasPrice = BigInt(feeData.gasPrice);
+        }
+      } catch (error) {
+        // 如果获取失败，使用默认值
+        console.warn("获取 gas 价格失败，使用默认值:", error);
+      }
+
+      // 估算 gas（如果未提供）
+      let gasLimit: bigint;
+      if (options.gasLimit) {
+        gasLimit = BigInt(options.gasLimit.toString());
+      } else {
+        try {
+          const estimatedGas = await client.estimateGas({
+            to: contractAddress as Address,
+            data: data as Hex,
+            value: options.value ? BigInt(options.value.toString()) : undefined,
+            account: account.address,
+          });
+          // 增加 20% 的缓冲
+          gasLimit = (estimatedGas * BigInt(120)) / BigInt(100);
+        } catch (error) {
+          // 如果估算失败，使用默认值
+          console.warn("Gas 估算失败，使用默认值:", error);
+          gasLimit = BigInt(100000); // 默认 100k gas
+        }
+      }
+
+      // 构建交易对象
+      const transaction: any = {
+        to: contractAddress as Address,
+        data: data as Hex,
         value: options.value ? BigInt(options.value.toString()) : undefined,
-        gas: options.gasLimit ? BigInt(options.gasLimit.toString()) : undefined,
-        chain: chain,
+        gas: gasLimit,
+        nonce,
+        chainId,
+      };
+
+      // 添加 gas 价格信息
+      if (maxFeePerGas) {
+        transaction.maxFeePerGas = maxFeePerGas;
+        if (maxPriorityFeePerGas) {
+          transaction.maxPriorityFeePerGas = maxPriorityFeePerGas;
+        }
+      } else if (gasPrice) {
+        transaction.gasPrice = gasPrice;
+      }
+
+      // 使用账户签名交易
+      const signedTransaction = await account.signTransaction(transaction);
+
+      // 使用 sendRawTransaction 发送已签名的交易（通过 PublicClient）
+      const hash = await client.sendRawTransaction({
+        serializedTransaction: signedTransaction,
       });
 
       // 如果不需要等待确认，直接返回交易哈希
@@ -586,9 +755,9 @@ export class Web3Client {
       }
 
       // 等待交易确认并检查状态
-      const client = this.getPublicClient();
+      const publicClient = this.getPublicClient();
       try {
-        const receipt = await client.waitForTransactionReceipt({
+        const receipt = await publicClient.waitForTransactionReceipt({
           hash: hash as Hash,
           confirmations: 1,
         }) as unknown as {
@@ -925,7 +1094,8 @@ export class Web3Client {
 
     this.blockListenerStarted = true;
     this.blockReconnectAttempts = 0;
-    const client = this.getPublicClient();
+    // 使用 WebSocket client 进行区块监听，提供实时推送
+    const client = this.getWsClient();
 
     try {
       // 使用 viem 的 watchBlocks 监听新区块
@@ -1073,7 +1243,8 @@ export class Web3Client {
 
     this.transactionListenerStarted = true;
     this.transactionReconnectAttempts = 0;
-    const client = this.getPublicClient();
+    // 使用 WebSocket client 进行交易监听，提供实时推送
+    const client = this.getWsClient();
 
     try {
       // 使用 viem 的 watchPendingTransactions 监听待处理交易
@@ -1369,7 +1540,8 @@ export class Web3Client {
     }
 
     try {
-      const client = this.getPublicClient();
+      // 使用 WebSocket client 进行合约事件监听，提供实时推送
+      const client = this.getWsClient();
 
       // 构建 ABI（如果提供了则使用，否则使用默认的事件 ABI）
       const eventAbi = abi
@@ -1486,10 +1658,10 @@ export class Web3Client {
   /**
    * 停止合约事件监听
    */
-  private stopContractEventListener(
+  private async stopContractEventListener(
     contractAddress: string,
     eventName: string,
-  ): void {
+  ): Promise<void> {
     const key = `${contractAddress}:${eventName}`;
 
     // 清除重连定时器
@@ -1503,17 +1675,115 @@ export class Web3Client {
     this.contractReconnectAttempts.delete(key);
 
     try {
-      // 取消 viem watch
+      // 取消 viem watch（这会关闭 WebSocket 订阅）
       const unsubscribe = this.contractWatchUnsubscribes.get(key);
       if (unsubscribe) {
         unsubscribe();
         this.contractWatchUnsubscribes.delete(key);
+        // 等待一小段时间，确保 unsubscribe 完全执行
+        // 注意：viem 的 unsubscribe 可能是异步的，但返回的是同步函数
+        // 这里给一些时间让内部清理完成
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     } catch (error) {
       console.error(
         `[Web3Client] 停止合约事件监听失败 (${contractAddress}:${eventName}):`,
         error,
       );
+    }
+  }
+
+  /**
+   * 关闭所有连接（清理资源）
+   * 用于测试或应用关闭时清理资源
+   * @param waitForCleanup 是否等待资源完全清理（默认 false，用于测试环境）
+   */
+  async destroy(waitForCleanup: boolean = false): Promise<void> {
+    // 防止重复销毁
+    if (this.isDestroying) {
+      return;
+    }
+    this.isDestroying = true;
+
+    // 停止所有事件监听
+    this.offBlock();
+    this.offTransaction();
+
+    // 停止所有合约事件监听（异步等待所有监听器停止完成）
+    const stopPromises: Promise<void>[] = [];
+    for (const key of this.contractEventListeners.keys()) {
+      const [contractAddress, eventName] = key.split(":");
+      stopPromises.push(
+        this.stopContractEventListener(contractAddress, eventName),
+      );
+    }
+    // 等待所有监听器停止完成
+    if (waitForCleanup) {
+      await Promise.all(stopPromises);
+    }
+    this.contractEventListeners.clear();
+
+    // 清理所有重连定时器
+    if (this.blockReconnectTimer) {
+      clearTimeout(this.blockReconnectTimer);
+      this.blockReconnectTimer = undefined;
+    }
+    if (this.transactionReconnectTimer) {
+      clearTimeout(this.transactionReconnectTimer);
+      this.transactionReconnectTimer = undefined;
+    }
+    for (const timer of this.contractReconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.contractReconnectTimers.clear();
+
+    // 主动关闭 WebSocket 连接
+    if (this.wsClient) {
+      try {
+        // viem 的 webSocket transport 提供了 getSocket() 方法来获取底层 WebSocket 连接
+        const client = this.wsClient as any;
+        const transport = client.transport || client._transport;
+        if (transport && typeof transport.getSocket === "function") {
+          const socket = transport.getSocket();
+          if (socket && typeof socket.close === "function") {
+            // 检查连接状态，只有在未关闭时才关闭
+            if (socket.readyState !== 3) { // WebSocket.CLOSED = 3
+              socket.close(1000, "正常关闭");
+
+              // 如果需要在测试环境中等待，等待连接完全关闭
+              if (waitForCleanup) {
+                // 等待 WebSocket 连接状态变为 CLOSED（最多等待 1 秒）
+                const maxWait = 1000;
+                const startTime = Date.now();
+                while (
+                  socket.readyState !== 3 && (Date.now() - startTime) < maxWait
+                ) {
+                  await new Promise((resolve) => setTimeout(resolve, 10));
+                }
+              }
+            }
+          }
+        }
+      } catch (_error) {
+        // 忽略关闭时的错误（连接可能已经关闭）
+        // console.warn("[Web3Client] 关闭 WebSocket 连接时出错:", error);
+      }
+    }
+
+    // 清理 transport 引用
+    if (this.wsTransport) {
+      this.wsTransport = null;
+    }
+
+    // 清理 WebSocket 客户端（viem 会自动处理连接关闭）
+    // 注意：viem 的 unsubscribe 函数会关闭 WebSocket 连接
+    this.wsClient = null;
+    this.publicClient = null;
+    this.walletClient = null;
+
+    // 如果需要在测试环境中等待，给一些时间让所有异步操作完成
+    if (waitForCleanup) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
 
@@ -1640,8 +1910,10 @@ export class Web3Client {
     }
 
     try {
+      // 确保私钥有 0x 前缀
+      const formattedKey = key.startsWith("0x") ? key : ("0x" + key);
       // 使用 viem 的 privateKeyToAccount 创建账户
-      const account = privateKeyToAccount(key as Hex);
+      const account = privateKeyToAccount(formattedKey as Hex);
 
       // 使用账户签名消息
       const signature = await account.signMessage({ message });
@@ -1796,39 +2068,81 @@ export class Web3Client {
   ): Promise<unknown[]> {
     const client = this.getPublicClient();
     try {
-      // 使用 viem 的 getLogs 方法查询交易
       const currentBlock = toBlock ?? await this.getBlockNumber();
       const startBlock = fromBlock ?? Math.max(0, currentBlock - 1000); // 默认查询最近 1000 个区块
+      const addressLower = address.toLowerCase();
 
-      // 查询该地址相关的日志
-      const logs = await client.getLogs({
-        address: address as Address,
-        fromBlock: BigInt(startBlock),
-        toBlock: BigInt(currentBlock),
-      });
-
-      // 从日志中提取交易哈希并获取完整交易信息
+      // 方法1：查询该地址作为 from 或 to 的交易（通过扫描区块）
+      // 方法2：查询该地址相关的所有日志（包括事件日志中的 from/to）
       const transactions: unknown[] = [];
       const txHashes = new Set<string>();
 
-      for (const log of logs) {
-        const txHash = log.transactionHash;
-        if (txHash && !txHashes.has(txHash)) {
-          txHashes.add(txHash);
-          try {
-            const tx = await this.getTransaction(txHash);
-            // 只包含与该地址相关的交易
-            if (
-              (tx as any).from?.toLowerCase() === address.toLowerCase() ||
-              (tx as any).to?.toLowerCase() === address.toLowerCase()
-            ) {
-              transactions.push(tx);
-            }
-          } catch (error) {
-            console.warn(`获取交易 ${txHash} 失败:`, error);
-          }
+      // 方法1：扫描区块，查找该地址作为 from 或 to 的交易
+      // 使用较小的批次大小，避免并发过多导致超时
+      const batchSize = 50;
+      for (
+        let blockNum = startBlock;
+        blockNum <= currentBlock;
+        blockNum += batchSize
+      ) {
+        const endBlock = Math.min(blockNum + batchSize - 1, currentBlock);
+        const blockPromises: Promise<void>[] = [];
+
+        for (let i = blockNum; i <= endBlock; i++) {
+          blockPromises.push(
+            (async () => {
+              try {
+                // 直接获取区块，不添加超时控制（避免创建过多定时器）
+                // 如果单个区块查询失败，会被 catch 捕获并继续扫描下一个区块
+                const block = await client.getBlock({
+                  blockNumber: BigInt(i),
+                  includeTransactions: true,
+                });
+
+                if (block.transactions && Array.isArray(block.transactions)) {
+                  for (const tx of block.transactions) {
+                    const txObj = tx as any;
+                    const txHash = txObj.hash;
+                    if (
+                      txHash &&
+                      !txHashes.has(txHash) &&
+                      (txObj.from?.toLowerCase() === addressLower ||
+                        txObj.to?.toLowerCase() === addressLower)
+                    ) {
+                      txHashes.add(txHash);
+                      transactions.push(txObj);
+                    }
+                  }
+                }
+              } catch (error) {
+                // 忽略单个区块的错误，继续扫描
+                console.warn(`扫描区块 ${i} 失败:`, error);
+              }
+            })(),
+          );
         }
+
+        await Promise.all(blockPromises);
       }
+
+      // 方法2：查询该地址相关的所有日志（包括事件日志）
+      // 注意：这里查询所有日志，然后过滤出包含该地址的日志
+      try {
+        // 查询所有日志（不指定 address，因为我们要查找事件中的 from/to）
+        // 但这样会查询太多日志，效率较低
+        // 更好的方法是查询已知合约的事件日志，然后过滤
+        // 这里先跳过，因为需要知道哪些合约可能包含该地址的事件
+      } catch (error) {
+        // 日志查询失败不影响主要结果
+        console.warn("查询地址相关日志失败:", error);
+      }
+
+      // 按区块号和时间戳排序（从新到旧）
+      transactions.sort((a: any, b: any) => {
+        const blockA = a.blockNumber || 0;
+        const blockB = b.blockNumber || 0;
+        return Number(blockB) - Number(blockA);
+      });
 
       return transactions;
     } catch (error) {
@@ -1845,7 +2159,7 @@ export class Web3Client {
    * @param contractAddress 合约地址
    * @param functionSignature 函数签名（如 'register(address,string)'）
    * @param options 扫描选项
-   * @returns 交易信息数组和分页信息
+   * @returns 交易信息数组和总数
    *
    * @example
    * // 扫描 register 方法的所有调用
@@ -1855,11 +2169,9 @@ export class Web3Client {
    *   {
    *     fromBlock: 1000,
    *     toBlock: 2000,
-   *     page: 1,
-   *     pageSize: 20,
    *   }
    * );
-   * // result: { transactions: [...], total: 100, page: 1, pageSize: 20, totalPages: 5 }
+   * // result: { transactions: [...], total: 100 }
    */
   async scanContractMethodTransactions(
     contractAddress: string,
@@ -1867,8 +2179,6 @@ export class Web3Client {
     options: {
       fromBlock?: number;
       toBlock?: number;
-      page?: number;
-      pageSize?: number;
       abi?: string[]; // 可选：完整 ABI，用于解析参数
     } = {},
   ): Promise<{
@@ -1887,9 +2197,6 @@ export class Web3Client {
       receipt?: unknown; // 交易收据（可选）
     }>;
     total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
   }> {
     const client = this.getPublicClient();
     try {
@@ -1901,8 +2208,6 @@ export class Web3Client {
       // 设置默认值
       const currentBlock = options.toBlock ?? await this.getBlockNumber();
       const startBlock = options.fromBlock ?? Math.max(0, currentBlock - 10000); // 默认查询最近 10000 个区块
-      const page = options.page ?? 1;
-      const pageSize = options.pageSize ?? 20;
 
       // 扫描区块范围
       const allTransactions: Array<{
@@ -1920,8 +2225,8 @@ export class Web3Client {
         receipt?: unknown;
       }> = [];
 
-      // 批量扫描区块（每次扫描 100 个区块以提高效率）
-      const batchSize = 100;
+      // 批量扫描区块（每次扫描 50 个区块，避免并发过多导致超时）
+      const batchSize = 50;
       for (
         let blockNum = startBlock;
         blockNum <= currentBlock;
@@ -1934,6 +2239,8 @@ export class Web3Client {
           blockPromises.push(
             (async () => {
               try {
+                // 直接获取区块，不添加超时控制（避免创建过多定时器）
+                // 如果单个区块查询失败，会被 catch 捕获并继续扫描下一个区块
                 const block = await client.getBlock({
                   blockNumber: BigInt(i),
                   includeTransactions: true,
@@ -1943,12 +2250,14 @@ export class Web3Client {
                   for (const tx of block.transactions) {
                     const txObj = tx as any;
                     // 检查是否调用了目标合约和方法
+                    // 注意：viem 返回的交易对象可能使用 'input' 或 'data' 字段
+                    const txData = txObj.input || txObj.data;
                     if (
                       txObj.to &&
                       txObj.to.toLowerCase() ===
                         contractAddress.toLowerCase() &&
-                      txObj.data &&
-                      txObj.data.toLowerCase().startsWith(selectorLower)
+                      txData &&
+                      txData.toLowerCase().startsWith(selectorLower)
                     ) {
                       // 解析函数参数（如果提供了 ABI）
                       let args: unknown[] | undefined;
@@ -1964,12 +2273,21 @@ export class Web3Client {
                               item.type === "function" &&
                               item.name === functionName,
                           );
-                          if (func) {
-                            const decoded = decodeFunctionData({
-                              abi,
-                              data: txObj.data as Hex,
-                            });
-                            args = Array.from(decoded.args || []);
+                          if (func && txData) {
+                            // 确保 txData 存在且是有效的 Hex 字符串
+                            try {
+                              const decoded = decodeFunctionData({
+                                abi,
+                                data: txData as Hex,
+                              });
+                              args = Array.from(decoded.args || []);
+                            } catch (decodeError) {
+                              // 解码失败，忽略参数（可能是数据格式问题）
+                              console.warn(
+                                `解码交易参数失败 ${txObj.hash}:`,
+                                decodeError,
+                              );
+                            }
                           }
                         } catch (error) {
                           // 解析失败，忽略参数
@@ -2026,19 +2344,12 @@ export class Web3Client {
         return (b.timestamp || 0) - (a.timestamp || 0);
       });
 
-      // 分页
+      // 返回所有交易
       const total = allTransactions.length;
-      const totalPages = Math.ceil(total / pageSize);
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedTransactions = allTransactions.slice(startIndex, endIndex);
 
       return {
-        transactions: paginatedTransactions,
+        transactions: allTransactions,
         total,
-        page,
-        pageSize,
-        totalPages,
       };
     } catch (error) {
       throw new Error(

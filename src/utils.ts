@@ -9,20 +9,18 @@
 // 导入 viem 核心模块
 import {
   type Address,
+  createPublicClient,
   encodeAbiParameters,
   encodeFunctionData,
   getAddress,
   type Hex,
+  http,
   isAddress as viemIsAddress,
   keccak256 as viemKeccak256,
   parseAbi,
-} from "npm:viem@^2.43.5";
+} from "viem";
 // 导入 viem 账户模块（用于生成钱包）
-import {
-  generatePrivateKey,
-  privateKeyToAccount,
-} from "npm:viem@^2.43.3/accounts";
-import { createPublicClient, http } from "npm:viem@^2.43.5";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 /**
  * 以太坊单位枚举
@@ -106,21 +104,29 @@ export function toWei(value: string | number, unit: string = "ether"): string {
  *
  * @example
  * isAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb') // true
+ * isAddress('0x742d35cc6634c0532925a3b844bc9e7595f0beb') // true
  */
 export function isAddress(address: string): boolean {
   if (!address || typeof address !== "string") {
     return false;
   }
 
-  // 使用 viem 的 isAddress
+  // 先尝试使用 viem 的 isAddress（如果地址是校验和格式，会直接通过）
   try {
-    return viemIsAddress(address);
+    if (viemIsAddress(address)) {
+      return true;
+    }
   } catch {
-    // 如果失败，使用自己的实现
+    // 如果 viem 抛出异常，继续使用自己的实现
   }
 
-  // 移除 0x 前缀（如果有）
-  const addr = address.startsWith("0x") ? address.slice(2) : address;
+  // 规范化地址：确保有 0x 前缀，转换为小写
+  const normalized = address.startsWith("0x")
+    ? address.toLowerCase()
+    : ("0x" + address.toLowerCase());
+
+  // 移除 0x 前缀
+  const addr = normalized.slice(2);
 
   // 检查长度（40 个十六进制字符）
   if (addr.length !== 40) {
@@ -128,16 +134,20 @@ export function isAddress(address: string): boolean {
   }
 
   // 检查是否为有效的十六进制字符串
-  if (!/^[0-9a-fA-F]{40}$/.test(addr)) {
+  if (!/^[0-9a-f]{40}$/.test(addr)) {
     return false;
   }
 
-  // 如果地址包含大小写混合，验证校验和（EIP-55）
-  const hasMixedCase = /[a-f]/.test(addr) && /[A-F]/.test(addr);
+  // 如果原始地址包含大小写混合，验证校验和（EIP-55）
+  const originalAddr = address.startsWith("0x") ? address.slice(2) : address;
+  const hasMixedCase = /[a-f]/.test(originalAddr) && /[A-F]/.test(originalAddr);
   if (hasMixedCase) {
     return checkAddressChecksum(address);
   }
 
+  // 对于小写地址，格式验证已经通过（40个十六进制字符）
+  // viem 的 getAddress 要求校验和格式，但小写地址在以太坊中也是有效的
+  // 所以如果格式正确，直接返回 true
   return true;
 }
 
@@ -182,8 +192,8 @@ export function checkAddressChecksum(address: string): boolean {
  * // '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
  */
 export function toChecksumAddress(address: string): string {
-  // 使用 viem 的 isAddress 函数
-  if (!viemIsAddress(address)) {
+  // 先使用我们自己的 isAddress 验证
+  if (!isAddress(address)) {
     throw new Error(`无效的地址: ${address}`);
   }
 
@@ -195,8 +205,8 @@ export function toChecksumAddress(address: string): string {
   // 使用 viem 的 getAddress 生成校验和地址
   try {
     return getAddress("0x" + addr);
-  } catch {
-    // 如果失败，返回小写地址
+  } catch (_error) {
+    // 如果失败，返回规范化地址
     return "0x" + addr;
   }
 }
@@ -459,16 +469,23 @@ export function isTxHash(txHash: string): boolean {
  * // '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
  */
 export function formatAddress(address: string): string {
-  // 使用 viem 的 isAddress 函数
-  if (!viemIsAddress(address)) {
+  // 先使用我们自己的 isAddress 验证
+  if (!isAddress(address)) {
     throw new Error(`无效的地址: ${address}`);
   }
 
-  // 确保有 0x 前缀
-  const addrWithPrefix = address.startsWith("0x") ? address : "0x" + address;
+  // 确保有 0x 前缀，转换为小写（viem 的 getAddress 需要小写地址）
+  const addrWithPrefix = address.startsWith("0x")
+    ? address.toLowerCase()
+    : ("0x" + address.toLowerCase());
 
-  // 使用 toChecksumAddress 转换为校验和地址
-  return toChecksumAddress(addrWithPrefix);
+  // 使用 viem 的 getAddress 生成校验和地址
+  try {
+    return getAddress(addrWithPrefix);
+  } catch (_error) {
+    // 如果失败，使用 toChecksumAddress
+    return toChecksumAddress(addrWithPrefix);
+  }
 }
 
 /**
