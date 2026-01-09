@@ -1,8 +1,13 @@
 # @dreamer/web3
 
-服务端 Web3 操作辅助库，用于 Deno 运行时，支持 RPC 调用和合约交互。
+> 服务端 Web3 操作辅助库，兼容 Deno 和 Bun 运行时，支持 RPC 调用和合约交互
 
-## 功能
+[![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+## 🎯 功能
 
 服务端 Web3 操作辅助库，提供统一的 Web3 抽象层，支持 RPC 调用和合约交互。
 
@@ -40,7 +45,7 @@
 
 __所有 @dreamer/_ 库都遵循以下原则_*：
 
-- **主包（@dreamer/xxx）**：用于服务端（Deno 运行时）
+- **主包（@dreamer/xxx）**：用于服务端（兼容 Deno 和 Bun 运行时）
 - **客户端子包（@dreamer/xxx/client）**：用于客户端（浏览器环境）
 
 这样可以：
@@ -59,10 +64,6 @@ __所有 @dreamer/_ 库都遵循以下原则_*：
 - **数据索引**：扫描区块、索引交易、分析链上数据
 - **后端服务**：提供链数据 API、合约查询服务
 
-## 优先级
-
-⭐⭐（特定场景）
-
 ## 安装
 
 ```bash
@@ -71,12 +72,14 @@ deno add jsr:@dreamer/web3
 
 ## 环境兼容性
 
-- **Deno 版本**：要求 Deno 2.5 或更高版本
-- **服务端**：✅ 支持（Deno 运行时，通过 RPC URL 连接区块链网络）
+- **运行时要求**：Deno 2.5+ 或 Bun 1.0+
+- **服务端**：✅ 支持（兼容 Deno 和 Bun 运行时，通过 RPC URL 连接区块链网络）
 - **客户端**：❌ 不支持（请使用 `jsr:@dreamer/web3/client`）
 - **依赖**：需要 `npm:viem@^2.43.3`
 
-## 使用示例
+---
+
+## 🚀 快速开始
 
 ### 基本使用（RPC 调用）
 
@@ -453,11 +456,31 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/mod";
 
 客户端 Web3 文档请查看：[src/client/README.md](./src/client/README.md)
 
-## 备注
+## 📝 备注
 
-- **服务端专用**：仅用于 Deno 运行时，不支持浏览器环境
+- **服务端专用**：兼容 Deno 和 Bun 运行时，不支持浏览器环境
 - **RPC 连接**：必须配置 RPC URL 才能使用
 - **合约代理**：支持通过 `web3.contracts.合约名称` 访问合约
 - **消息签名**：支持使用私钥签名和验证消息
 - **类型安全**：完整的 TypeScript 类型支持
 - **依赖**：需要 `npm:viem@^2.43.3`
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+---
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE.md](./LICENSE.md)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by Dreamer Team**
+
+</div>

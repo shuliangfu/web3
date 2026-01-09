@@ -1,6 +1,11 @@
 # @dreamer/web3/client
 
-客户端 Web3 操作辅助库，用于浏览器环境，支持钱包连接和交互。
+> 一个用于浏览器的 Web3 操作辅助库，支持钱包连接和交互
+
+[![JSR](https://jsr.io/badges/@dreamer/web3/client)](https://jsr.io/@dreamer/web3/client)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
 
 ## 服务端支持
 
@@ -57,10 +62,6 @@ __所有 @dreamer/_ 库都遵循以下原则_*：
 - **用户交互**：发送交易、签名消息、合约交互
 - **实时监听**：监听账户变化、链切换、合约事件
 
-## 优先级
-
-⭐⭐（特定场景）
-
 ## 安装
 
 ```bash
@@ -75,7 +76,7 @@ deno add jsr:@dreamer/web3/client
   使用钱包连接，不需要 RPC URL）
 - **依赖**：需要 `npm:viem@^2.43.3`
 
-## 使用示例
+## 🚀 快速开始
 
 ### 基本使用（钱包连接）
 
@@ -444,7 +445,9 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 - `getFunctionSelector(functionSignature)`: 获取函数选择器
 - `encodeFunctionCall(functionSignature, args)`: 编码函数调用数据
 
-## 备注
+---
+
+## 📝 备注
 
 - **客户端专用**：仅用于浏览器环境，不支持服务端
 - **钱包集成**：自动检测和连接 EIP-1193 兼容钱包（MetaMask 等）
@@ -452,3 +455,23 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 - **合约代理**：支持通过 `web3.contracts.合约名称` 访问合约
 - **类型安全**：完整的 TypeScript 类型支持
 - **依赖**：需要 `npm:viem@^2.43.3`
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+---
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE.md](../../../LICENSE.md)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by Dreamer Team**
+
+</div>
