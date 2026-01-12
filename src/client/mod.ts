@@ -30,7 +30,7 @@ import {
   type PublicClient,
   verifyMessage as viemVerifyMessage,
   type WalletClient,
-} from "npm:viem@^2.43.5";
+} from "viem";
 
 /**
  * 扩展 Window 接口以支持 ethereum

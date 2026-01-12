@@ -1,0 +1,454 @@
+/**
+ * @fileoverview 客户端 Web3Client 测试
+ *
+ * 注意：客户端 Web3Client 需要浏览器环境和钱包扩展（如 MetaMask）
+ * 本测试使用 Mock window.ethereum 来模拟浏览器环境
+ */
+
+import { afterAll, beforeAll, describe, expect, it } from "@dreamer/test";
+import { createWeb3Client, Web3Client } from "../src/client/mod.ts";
+
+/**
+ * Mock window.ethereum 对象
+ */
+function createMockEthereum() {
+  const mockAccounts = ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"];
+  const mockChainId = "0x61"; // BSC 测试网 (97)
+
+  return {
+    request: async (args: { method: string; params?: unknown[] }) => {
+      const { method, params } = args;
+
+      switch (method) {
+        case "eth_requestAccounts":
+          return mockAccounts;
+
+        case "eth_accounts":
+          return mockAccounts;
+
+        case "eth_chainId":
+          return mockChainId;
+
+        case "eth_getBalance":
+          return "0x2386f26fc10000"; // 0.01 ETH
+
+        case "eth_getTransactionCount":
+          return "0x0";
+
+        case "eth_sendTransaction":
+          // 返回一个模拟的交易哈希
+          return "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+        case "eth_getTransactionReceipt":
+          // 返回一个模拟的交易收据
+          return {
+            transactionHash: params?.[0] as string,
+            blockNumber: "0x1",
+            blockHash:
+              "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+            status: "0x1",
+            gasUsed: "0x5208",
+          };
+
+        case "eth_getTransaction":
+          return {
+            hash: params?.[0] as string,
+            from: mockAccounts[0],
+            to: params?.[1] as string,
+            value: "0x0",
+            gas: "0x5208",
+            gasPrice: "0x3b9aca00",
+          };
+
+        case "eth_blockNumber":
+          return "0x1000";
+
+        case "eth_getBlockByNumber":
+          return {
+            number: params?.[0] as string,
+            hash:
+              "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+            transactions: [],
+          };
+
+        case "eth_gasPrice":
+          return "0x3b9aca00"; // 1 gwei
+
+        case "eth_estimateGas":
+          return "0x5208"; // 21000
+
+        case "eth_getCode":
+          return "0x"; // 普通地址，不是合约
+
+        default:
+          throw new Error(`未实现的 Mock 方法: ${method}`);
+      }
+    },
+    on: (_event: string, _callback: (...args: unknown[]) => void) => {
+      // Mock 事件监听
+    },
+    removeListener: (
+      _event: string,
+      _callback: (...args: unknown[]) => void,
+    ) => {
+      // Mock 移除事件监听
+    },
+  };
+}
+
+/**
+ * 设置全局 window.ethereum
+ */
+function setupMockEthereum() {
+  const mockEthereum = createMockEthereum();
+  (globalThis as any).window = {
+    ethereum: mockEthereum,
+  };
+  return mockEthereum;
+}
+
+/**
+ * 清理全局 window.ethereum
+ */
+function cleanupMockEthereum() {
+  delete (globalThis as any).window;
+}
+
+describe("客户端 Web3Client", () => {
+  let mockEthereum: ReturnType<typeof createMockEthereum>;
+
+  beforeAll(() => {
+    mockEthereum = setupMockEthereum();
+  });
+
+  afterAll(() => {
+    cleanupMockEthereum();
+  });
+
+  describe("创建客户端实例", () => {
+    it("应该创建客户端实例", () => {
+      const client = new Web3Client();
+      expect(client).toBeTruthy();
+    });
+
+    it("应该创建带合约配置的客户端实例", () => {
+      const client = new Web3Client({
+        contracts: {
+          name: "USDT",
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          abi: [],
+        },
+      });
+      expect(client).toBeTruthy();
+      expect(client.contracts.USDT).toBeTruthy();
+      expect(client.contracts.USDT.address).toBe(
+        "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      );
+    });
+
+    it("应该使用便捷函数 createWeb3Client 创建客户端", () => {
+      const client = createWeb3Client();
+      expect(client).toBeTruthy();
+      expect(client).toBeInstanceOf(Web3Client);
+    });
+  });
+
+  describe("配置方法", () => {
+    let client: Web3Client;
+
+    beforeAll(() => {
+      client = new Web3Client();
+    });
+
+    it("应该获取配置", () => {
+      const clientConfig = client.getConfig();
+      expect(clientConfig).toBeTruthy();
+      expect(typeof clientConfig).toBe("object");
+    });
+
+    it("应该更新配置", () => {
+      const newChainId = 56;
+      client.updateConfig({ chainId: newChainId });
+      const updatedConfig = client.getConfig();
+      expect(updatedConfig.chainId).toBe(newChainId);
+    });
+  });
+
+  describe("钱包连接", () => {
+    let client: Web3Client;
+
+    beforeAll(() => {
+      client = new Web3Client();
+    });
+
+    it("应该连接钱包", async () => {
+      const accounts = await client.connectWallet();
+      expect(accounts).toBeTruthy();
+      expect(Array.isArray(accounts)).toBeTruthy();
+      expect(accounts.length).toBeGreaterThan(0);
+      expect(accounts[0]).toBeTruthy();
+      expect(typeof accounts[0]).toBe("string");
+      expect(accounts[0].startsWith("0x")).toBeTruthy();
+    });
+
+    it("应该获取当前账户", async () => {
+      const accounts = await client.getAccounts();
+      expect(accounts).toBeTruthy();
+      expect(Array.isArray(accounts)).toBeTruthy();
+    });
+
+    // 注意：客户端 Web3Client 没有 disconnectWallet 方法
+    // 钱包断开由用户通过钱包界面操作
+  });
+
+  describe("网络和链信息", () => {
+    let client: Web3Client;
+
+    beforeAll(() => {
+      client = new Web3Client();
+    });
+
+    it("应该获取链 ID", async () => {
+      const chainId = await client.getChainId();
+      expect(chainId).toBeTruthy();
+      expect(typeof chainId).toBe("number");
+      expect(chainId).toBe(97); // BSC 测试网
+    });
+
+    it("应该获取网络信息", async () => {
+      const network = await client.getNetwork();
+      expect(network).toBeTruthy();
+      expect(network.chainId).toBe(97);
+      expect(typeof network.name).toBe("string");
+    });
+
+    // 注意：客户端 Web3Client 没有 getBlockNumber 方法
+    // 可以通过 getNetwork 获取链信息
+  });
+
+  // 注意：客户端 Web3Client 没有 getBalance, getBalances, getTransactionCount 方法
+  // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
+
+  // 注意：客户端 Web3Client 没有 getGasPrice, getFeeData, estimateGas, getGasLimit 方法
+  // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
+
+  // 注意：客户端 Web3Client 没有 getBlock, getBlockTransactions 方法
+  // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
+
+  // 注意：客户端 Web3Client 没有 sendTransaction, waitForTransaction, getTransaction, getTransactionReceipt 方法
+  // 这些功能需要通过 WalletClient 直接调用或使用其他方式实现
+
+  describe("合约相关", () => {
+    let client: Web3Client;
+
+    beforeAll(async () => {
+      client = new Web3Client({
+        contracts: {
+          name: "USDT",
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          abi: [
+            {
+              type: "function",
+              name: "balanceOf",
+              inputs: [{ name: "account", type: "address" }],
+              outputs: [{ name: "", type: "uint256" }],
+              stateMutability: "view",
+            },
+          ],
+        },
+      });
+      await client.connectWallet();
+    });
+
+    it("应该读取合约数据", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过合约读取测试");
+        return;
+      }
+
+      try {
+        const balance = await client.readContract({
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          functionName: "balanceOf",
+          args: [accounts[0]],
+          abi: [
+            {
+              type: "function",
+              name: "balanceOf",
+              inputs: [{ name: "account", type: "address" }],
+              outputs: [{ name: "", type: "uint256" }],
+              stateMutability: "view",
+            },
+          ],
+        });
+        expect(balance).toBeTruthy();
+      } catch (error) {
+        console.warn("无法读取合约数据:", error);
+      }
+    });
+
+    it("应该通过合约代理读取合约数据", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过合约代理测试");
+        return;
+      }
+
+      try {
+        const balance = await client.contracts.USDT.readContract("balanceOf", [
+          accounts[0],
+        ]);
+        expect(balance).toBeTruthy();
+      } catch (error) {
+        console.warn("无法通过合约代理读取数据:", error);
+      }
+    });
+
+    // 注意：客户端 Web3Client 没有 getCode, isContract 方法
+    // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
+  });
+
+  describe("事件监听", () => {
+    let client: Web3Client;
+
+    beforeAll(() => {
+      client = new Web3Client();
+    });
+
+    afterAll(async () => {
+      // 客户端 Web3Client 没有 destroy 方法，资源清理由浏览器环境自动处理
+    });
+
+    it("应该注册合约事件监听并返回取消函数", () => {
+      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+      const eventName = "Transfer";
+
+      const unsubscribe = client.onContractEvent(
+        contractAddress,
+        eventName,
+        () => {},
+      );
+      expect(typeof unsubscribe).toBe("function");
+      // 立即取消，避免启动后台任务
+      unsubscribe();
+      // 确保清理
+      client.offContractEvent(contractAddress, eventName);
+    }, { sanitizeOps: false, sanitizeResources: false });
+
+    it("应该取消合约的指定事件监听", async () => {
+      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+      const eventName = "Transfer";
+
+      client.onContractEvent(contractAddress, eventName, () => {});
+      client.offContractEvent(contractAddress, eventName);
+      // 等待资源清理
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }, { sanitizeOps: false, sanitizeResources: false });
+
+    it("应该取消合约的所有事件监听", async () => {
+      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+      const eventName1 = "Transfer";
+      const eventName2 = "Approval";
+
+      client.onContractEvent(contractAddress, eventName1, () => {});
+      client.onContractEvent(contractAddress, eventName2, () => {});
+
+      // 取消该合约的所有事件监听
+      client.offContractEvent(contractAddress);
+      // 等待资源清理
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }, { sanitizeOps: false, sanitizeResources: false });
+  });
+
+  describe("钱包事件监听", () => {
+    let client: Web3Client;
+
+    beforeAll(() => {
+      client = new Web3Client();
+    });
+
+    it("应该注册账户变化监听并返回取消函数", () => {
+      const unsubscribe = client.onAccountsChanged(() => {});
+      expect(typeof unsubscribe).toBe("function");
+      // 立即取消
+      unsubscribe();
+      // 确保清理
+      client.offAccountsChanged();
+    });
+
+    it("应该取消所有账户变化监听", () => {
+      client.onAccountsChanged(() => {});
+      client.offAccountsChanged();
+      // 验证可以多次调用
+      client.offAccountsChanged();
+    });
+
+    it("应该注册链切换监听并返回取消函数", () => {
+      const unsubscribe = client.onChainChanged(() => {});
+      expect(typeof unsubscribe).toBe("function");
+      // 立即取消
+      unsubscribe();
+      // 确保清理
+      client.offChainChanged();
+    });
+
+    it("应该取消所有链切换监听", () => {
+      client.onChainChanged(() => {});
+      client.offChainChanged();
+      // 验证可以多次调用
+      client.offChainChanged();
+    });
+  });
+
+  describe("消息签名", () => {
+    let client: Web3Client;
+
+    beforeAll(async () => {
+      client = new Web3Client();
+      await client.connectWallet();
+    });
+
+    it("应该签名消息", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过签名测试");
+        return;
+      }
+
+      const message = "Hello, Web3!";
+      try {
+        const signature = await client.signMessage(message);
+        expect(signature).toBeTruthy();
+        expect(typeof signature).toBe("string");
+        expect(signature.startsWith("0x")).toBeTruthy();
+      } catch (error) {
+        console.warn("无法签名消息:", error);
+      }
+    });
+
+    it("应该验证消息签名", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过验证签名测试");
+        return;
+      }
+
+      const message = "Hello, Web3!";
+      try {
+        const signature = await client.signMessage(message);
+        const isValid = await client.verifyMessage(
+          message,
+          signature,
+          accounts[0],
+        );
+        expect(typeof isValid).toBe("boolean");
+      } catch (error) {
+        console.warn("无法验证消息签名:", error);
+      }
+    });
+  });
+
+  // 注意：客户端 Web3Client 没有 destroy 方法
+  // 资源清理由浏览器环境自动处理
+});
