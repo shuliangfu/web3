@@ -4,6 +4,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-102%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -72,7 +73,7 @@ deno add jsr:@dreamer/web3
 
 ## 环境兼容性
 
-- **运行时要求**：Deno 2.5+ 或 Bun 1.0+
+- **运行时要求**：Deno 2.6+ 或 Bun 1.3.5
 - **服务端**：✅ 支持（兼容 Deno 和 Bun 运行时，通过 RPC URL 连接区块链网络）
 - **客户端**：❌ 不支持（请使用 `jsr:@dreamer/web3/client`）
 - **依赖**：需要 `npm:viem@^2.43.3`

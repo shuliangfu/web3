@@ -37,6 +37,6 @@
   },
   "imports": {
     "viem": "npm:viem@^2.43.5",
-    "@dreamer/test": "jsr:@dreamer/test@^1.0.0-beta.12"
+    "@dreamer/test": "jsr:@dreamer/test@1.0.0-beta.22"
   }
 }

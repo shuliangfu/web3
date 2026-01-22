@@ -69,9 +69,37 @@ export function fromWei(
     throw new Error(`未知的单位: ${unit}`);
   }
 
-  // 转换为目标单位（保留 18 位小数精度）
-  const result = Number(weiValue) / Number(unitMultiplier);
-  return result.toString();
+  // 使用 BigInt 进行精确的整数除法
+  const quotient = weiValue / unitMultiplier;
+  const remainder = weiValue % unitMultiplier;
+
+  // 如果没有余数，直接返回整数部分
+  if (remainder === BigInt(0)) {
+    return quotient.toString();
+  }
+
+  // 计算小数部分：将余数转换为小数
+  // 例如：remainder = 500000000000000000, unitMultiplier = 1000000000000000000
+  // 小数部分 = 500000000000000000 / 1000000000000000000 = 0.5
+  const unitStr = unitMultiplier.toString();
+  const unitDecimals = unitStr.length - 1; // 单位的小数位数（例如 ether 是 18）
+
+  // 将余数转换为字符串并填充到单位的小数位数
+  const remainderStr = remainder.toString().padStart(unitDecimals, "0");
+
+  // 移除小数部分末尾的零
+  let decimalPart = remainderStr;
+  while (decimalPart.length > 0 && decimalPart[decimalPart.length - 1] === "0") {
+    decimalPart = decimalPart.slice(0, -1);
+  }
+
+  // 如果小数部分为空，只返回整数部分
+  if (decimalPart === "" || decimalPart === "0") {
+    return quotient.toString();
+  }
+
+  // 返回整数部分 + 小数部分
+  return `${quotient.toString()}.${decimalPart}`;
 }
 
 /**
@@ -85,16 +113,47 @@ export function fromWei(
  * toWei('1', 'gwei') // '1000000000'
  */
 export function toWei(value: string | number, unit: string = "ether"): string {
-  const numValue = typeof value === "string" ? parseFloat(value) : value;
   const unitMultiplier = UNIT_MAP[unit.toLowerCase()];
 
   if (!unitMultiplier) {
     throw new Error(`未知的单位: ${unit}`);
   }
 
-  // 转换为 wei
-  const result = BigInt(Math.floor(numValue * Number(unitMultiplier)));
-  return result.toString();
+  // 将输入值转换为字符串进行处理，避免精度丢失
+  const valueStr = typeof value === "string" ? value : value.toString();
+
+  // 处理负号
+  const isNegative = valueStr.startsWith("-");
+  const cleanValue = isNegative ? valueStr.slice(1) : valueStr;
+
+  // 分离整数部分和小数部分
+  const [integerPart, decimalPart = ""] = cleanValue.split(".");
+
+  // 将整数部分转换为 wei
+  const integerWei = BigInt(integerPart) * unitMultiplier;
+
+  // 如果没有小数部分，直接返回
+  if (!decimalPart || decimalPart === "") {
+    return isNegative ? `-${integerWei.toString()}` : integerWei.toString();
+  }
+
+  // 处理小数部分：将小数部分转换为 wei
+  // 例如：0.5 ether = 0.5 * 10^18 = 5 * 10^17
+  const unitStr = unitMultiplier.toString();
+  const unitDecimals = unitStr.length - 1; // 单位的小数位数（例如 ether 是 18）
+
+  // 如果小数位数超过单位支持的小数位数，截断
+  const decimalDigits = decimalPart.length > unitDecimals
+    ? decimalPart.slice(0, unitDecimals)
+    : decimalPart.padEnd(unitDecimals, "0");
+
+  // 将小数部分转换为 BigInt
+  const decimalWei = BigInt(decimalDigits);
+
+  // 计算总 wei 值
+  const totalWei = integerWei + decimalWei;
+
+  return isNegative ? `-${totalWei.toString()}` : totalWei.toString();
 }
 
 /**
