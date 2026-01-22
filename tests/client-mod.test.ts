@@ -12,7 +12,9 @@ import { createWeb3Client, Web3Client } from "../src/client/mod.ts";
  * Mock window.ethereum 对象
  */
 function createMockEthereum() {
-  const mockAccounts = ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"];
+  // 使用有效的测试地址（40 个十六进制字符，42 个字符包括 0x）
+  // 这是一个有效的以太坊地址格式
+  const mockAccounts = ["0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"];
   const mockChainId = "0x61"; // BSC 测试网 (97)
 
   return {
@@ -79,6 +81,16 @@ function createMockEthereum() {
 
         case "eth_getCode":
           return "0x"; // 普通地址，不是合约
+
+        case "eth_call":
+          // 用于读取合约数据，返回模拟的调用结果
+          // 返回一个 uint256 类型的值（32 字节）
+          return "0x0000000000000000000000000000000000000000000000000000000000000064"; // 100
+
+        case "personal_sign":
+          // 返回一个模拟的签名（65 字节 = 130 个十六进制字符 + 0x = 132 个字符）
+          // 格式：r (32 bytes) + s (32 bytes) + v (1 byte)
+          return "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1c";
 
         default:
           throw new Error(`未实现的 Mock 方法: ${method}`);

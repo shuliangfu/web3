@@ -23,6 +23,7 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  getAddress,
   type Hex,
   parseAbi,
   type PublicClient,
@@ -435,9 +436,12 @@ export class Web3Client {
         throw new Error("请提供合约 ABI");
       }
 
+      // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
+      const formattedAddress = getAddress(contractAddress) as Address;
+
       // 使用 viem 的 readContract
       const result = await client.readContract({
-        address: contractAddress as Address,
+        address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
         args: options.args as any,
@@ -495,6 +499,9 @@ export class Web3Client {
         throw new Error("请提供合约 ABI");
       }
 
+      // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
+      const formattedAddress = getAddress(contractAddress) as Address;
+
       // 获取 chain
       let chain: Chain | undefined = (walletClient as any).chain ||
         this.chain || undefined;
@@ -515,7 +522,7 @@ export class Web3Client {
       // 发送交易
       const hash = await walletClient.writeContract({
         account: accounts[0],
-        address: contractAddress as Address,
+        address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
         args: options.args as any,
