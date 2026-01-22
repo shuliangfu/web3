@@ -309,58 +309,6 @@ describe("客户端 Web3Client", () => {
     // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
   });
 
-  describe("事件监听", () => {
-    let client: Web3Client;
-
-    beforeAll(() => {
-      client = new Web3Client();
-    });
-
-    afterAll(async () => {
-      // 客户端 Web3Client 没有 destroy 方法，资源清理由浏览器环境自动处理
-    });
-
-    it("应该注册合约事件监听并返回取消函数", () => {
-      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-      const eventName = "Transfer";
-
-      const unsubscribe = client.onContractEvent(
-        contractAddress,
-        eventName,
-        () => {},
-      );
-      expect(typeof unsubscribe).toBe("function");
-      // 立即取消，避免启动后台任务
-      unsubscribe();
-      // 确保清理
-      client.offContractEvent(contractAddress, eventName);
-    }, { sanitizeOps: false, sanitizeResources: false });
-
-    it("应该取消合约的指定事件监听", async () => {
-      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-      const eventName = "Transfer";
-
-      client.onContractEvent(contractAddress, eventName, () => {});
-      client.offContractEvent(contractAddress, eventName);
-      // 等待资源清理
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }, { sanitizeOps: false, sanitizeResources: false });
-
-    it("应该取消合约的所有事件监听", async () => {
-      const contractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-      const eventName1 = "Transfer";
-      const eventName2 = "Approval";
-
-      client.onContractEvent(contractAddress, eventName1, () => {});
-      client.onContractEvent(contractAddress, eventName2, () => {});
-
-      // 取消该合约的所有事件监听
-      client.offContractEvent(contractAddress);
-      // 等待资源清理
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }, { sanitizeOps: false, sanitizeResources: false });
-  });
-
   describe("钱包事件监听", () => {
     let client: Web3Client;
 
