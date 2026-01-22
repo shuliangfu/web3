@@ -96,29 +96,6 @@ const chainId = await web3.getChainId();
 console.log("链 ID:", chainId);
 ```
 
-### 发送交易（通过钱包）
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-
-// 先连接钱包
-await web3.connectWallet();
-
-// 发送 ETH（通过钱包签名）
-const txHash = await web3.sendTransaction({
-  to: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-  value: "1000000000000000000", // 1 ETH
-});
-
-console.log("交易哈希:", txHash);
-
-// 等待交易确认
-const receipt = await web3.waitForTransaction(txHash, 1);
-console.log("交易已确认:", receipt);
-```
-
 ### 合约交互（通过钱包）
 
 ```typescript
@@ -305,47 +282,26 @@ const contractAddress = computeContractAddress(
 
 ### 客户端 Web3Client 类
 
+#### 配置方法
+
+- `getConfig()`: 获取当前配置
+- `updateConfig(config)`: 更新配置
+
 #### 钱包方法
 
 - `connectWallet()`: 连接钱包，返回账户地址数组（不需要 RPC URL）
 - `getAccounts()`: 获取当前连接的账户地址数组
-- `disconnectWallet()`: 断开钱包连接
-
-#### 账户和余额方法
-
-- `getBalance(address)`: 获取账户余额（wei，字符串格式）
-- `getBalances(addresses)`: 批量获取多个账户余额
-- `getTransactionCount(address)`: 获取账户交易计数（nonce）
 
 #### 网络和链信息方法
 
 - `getChainId()`: 获取当前链 ID（使用钱包提供的 RPC）
 - `getNetwork()`: 获取网络信息（chainId 和 name）
-- `getBlockNumber()`: 获取当前区块号
-
-#### 交易方法
-
-- `sendTransaction(options)`: 发送交易（通过钱包签名），返回交易哈希
-- `waitForTransaction(txHash, confirmations?)`: 等待交易确认，返回交易收据
-- `getTransaction(txHash)`: 获取交易信息
-- `getTransactionReceipt(txHash)`: 获取交易收据
-- `estimateGas(options)`: 估算交易 gas 消耗
-- `getGasPrice()`: 获取当前 gas 价格
-- `getGasLimit(blockNumber?)`: 获取区块 gas 限制
-- `getFeeData()`: 获取费用数据（gasPrice 和 maxFeePerGas）
-
-#### 区块方法
-
-- `getBlock(blockNumber?)`: 获取区块信息
-- `getBlockTransactions(blockNumber, includeTransactions?)`: 获取区块中的交易
 
 #### 合约方法
 
 - `readContract(options)`: 读取合约数据（只读方法）
 - `callContract(options, waitForConfirmation?)`:
-  调用合约方法（通过钱包签名），返回交易收据
-- `getCode(address)`: 获取合约字节码
-- `isContract(address)`: 检查地址是否为合约
+  调用合约方法（通过钱包签名），返回交易收据或交易哈希
 
 #### 合约代理
 
@@ -394,6 +350,12 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 - `keccak256(data)`: Keccak-256 哈希
 - `solidityKeccak256(types, values)`: Solidity Keccak-256 哈希（处理 ABI 编码）
 
+#### 钱包工具
+
+- `generateWallet()`: 生成新的钱包地址和私钥（仅客户端，不推荐在生产环境使用）
+- `isPrivateKey(privateKey)`: 验证私钥格式
+- `isTxHash(txHash)`: 验证交易哈希格式
+
 #### 十六进制工具
 
 - `hexToBytes(hex)`: 十六进制字符串转字节数组
@@ -405,15 +367,8 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 - `padLeft(value, length, padChar?)`: 左填充
 - `padRight(value, length, padChar?)`: 右填充
 
-#### 钱包工具
-
-- `generateWallet()`: 生成新的钱包地址和私钥（仅客户端，不推荐在生产环境使用）
-- `isPrivateKey(privateKey)`: 验证私钥格式
-- `isTxHash(txHash)`: 验证交易哈希格式
-
 #### 合约工具
 
-- `getCode(address)`: 获取合约代码（客户端不需要 rpcUrl）
 - `computeContractAddress(deployerAddress, nonce)`: 计算合约地址（CREATE）
 - `getFunctionSelector(functionSignature)`: 获取函数选择器
 - `encodeFunctionCall(functionSignature, args)`: 编码函数调用数据
