@@ -439,12 +439,30 @@ export class Web3Client {
       // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
       const formattedAddress = getAddress(contractAddress) as Address;
 
+      // 格式化 args 中的地址参数（如果参数是地址类型）
+      const formattedArgs = options.args?.map((arg) => {
+        // 如果参数是字符串且看起来像地址（42 个字符，以 0x 开头），则格式化
+        if (
+          typeof arg === "string" &&
+          arg.startsWith("0x") &&
+          arg.length === 42
+        ) {
+          try {
+            return getAddress(arg);
+          } catch {
+            // 如果不是有效地址，返回原值
+            return arg;
+          }
+        }
+        return arg;
+      });
+
       // 使用 viem 的 readContract
       const result = await client.readContract({
         address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: options.args as any,
+        args: formattedArgs as any,
       });
 
       return result;
@@ -502,6 +520,24 @@ export class Web3Client {
       // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
       const formattedAddress = getAddress(contractAddress) as Address;
 
+      // 格式化 args 中的地址参数（如果参数是地址类型）
+      const formattedArgs = options.args?.map((arg) => {
+        // 如果参数是字符串且看起来像地址（42 个字符，以 0x 开头），则格式化
+        if (
+          typeof arg === "string" &&
+          arg.startsWith("0x") &&
+          arg.length === 42
+        ) {
+          try {
+            return getAddress(arg);
+          } catch {
+            // 如果不是有效地址，返回原值
+            return arg;
+          }
+        }
+        return arg;
+      });
+
       // 获取 chain
       let chain: Chain | undefined = (walletClient as any).chain ||
         this.chain || undefined;
@@ -525,7 +561,7 @@ export class Web3Client {
         address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: options.args as any,
+        args: formattedArgs as any,
         value: options.value ? BigInt(options.value.toString()) : undefined,
         gas: options.gasLimit ? BigInt(options.gasLimit.toString()) : undefined,
         chain: chain,
