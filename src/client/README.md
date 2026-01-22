@@ -32,9 +32,6 @@
 - **事件监听**：
   - 账户变化监听
   - 链切换监听
-  - 区块监听
-  - 交易监听
-  - 合约事件监听
 - **工具函数**：
   - 与服务端相同的工具函数
   - 钱包生成（仅客户端，不推荐在生产环境使用）
@@ -60,7 +57,7 @@ __所有 @dreamer/_ 库都遵循以下原则_*：
 - **DApp 开发**：去中心化应用开发
 - **钱包集成**：集成 MetaMask 等钱包
 - **用户交互**：发送交易、签名消息、合约交互
-- **实时监听**：监听账户变化、链切换、合约事件
+- **实时监听**：监听账户变化、链切换
 
 ## 安装
 
@@ -219,23 +216,6 @@ web3.onChainChanged((chainId) => {
   console.log("链切换:", chainId);
   // 可以在这里更新 UI
 });
-
-// 监听新区块
-web3.onBlock((blockNumber, block) => {
-  console.log("新区块:", blockNumber);
-});
-
-// 监听合约事件
-const unsubscribe = web3.onContractEvent(
-  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  "Transfer",
-  (event) => {
-    console.log("Transfer 事件:", event);
-  },
-);
-
-// 取消监听
-unsubscribe();
 ```
 
 ### 工具函数
@@ -383,13 +363,6 @@ const contractAddress = computeContractAddress(
 
 #### 事件监听方法
 
-- `onBlock(callback)`: 监听新区块，返回取消监听的函数
-- `offBlock()`: 停止所有区块监听
-- `onTransaction(callback)`: 监听新交易，返回取消监听的函数
-- `offTransaction()`: 停止所有交易监听
-- `onContractEvent(contractAddress, eventName, callback, options?)`:
-  监听合约事件，返回取消监听的函数
-- `offContractEvent(contractAddress, eventName?)`: 停止合约事件监听
 - `onAccountsChanged(callback)`: 监听账户变化，返回取消监听的函数
 - `offAccountsChanged()`: 停止账户变化监听
 - `onChainChanged(callback)`: 监听链切换，返回取消监听的函数

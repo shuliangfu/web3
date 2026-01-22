@@ -23,9 +23,7 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
-  getAddress,
   type Hex,
-  isAddress as viemIsAddress,
   parseAbi,
   type PublicClient,
   verifyMessage as viemVerifyMessage,
@@ -45,11 +43,6 @@ interface WindowWithEthereum extends Window {
     ) => void;
   };
 }
-
-/**
- * 合约事件回调函数类型
- */
-export type ContractEventListener = (event: unknown) => void | Promise<void>;
 
 /**
  * 账户变化回调函数类型
@@ -226,8 +219,6 @@ export class Web3Client {
   // 合约代理对象
   public readonly contracts: ContractsProxy;
   // 事件监听器存储
-  private contractEventListeners: Map<string, Set<ContractEventListener>> =
-    new Map();
   private accountsChangedListeners: Set<AccountsChangedListener> = new Set();
   private chainChangedListeners: Set<ChainChangedListener> = new Set();
   // 钱包事件监听器是否已启动
@@ -235,8 +226,6 @@ export class Web3Client {
   // 钱包事件监听器的包装函数（用于移除）
   private walletAccountsChangedWrapper?: (...args: unknown[]) => void;
   private walletChainChangedWrapper?: (...args: unknown[]) => void;
-  // viem watch 取消函数
-  private contractWatchUnsubscribes: Map<string, () => void> = new Map();
 
   /**
    * 创建 Web3 客户端实例（客户端版本，不需要 rpcUrl）
@@ -570,147 +559,6 @@ export class Web3Client {
         throw new Error("交易已取消");
       }
       throw new Error(`调用合约失败: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * 监听合约事件
-   * @param contractAddress 合约地址
-   * @param eventName 事件名称（如 'Transfer'）
-   * @param callback 回调函数，接收事件数据
-   * @param abi 合约 ABI（可选）
-   * @returns 取消监听的函数
-   */
-  onContractEvent(
-    contractAddress: string,
-    eventName: string,
-    callback: ContractEventListener,
-    abi?: string[] | Abi,
-  ): () => void {
-    const key = `${contractAddress}:${eventName}`;
-    if (!this.contractEventListeners.has(key)) {
-      this.contractEventListeners.set(key, new Set());
-    }
-    const listeners = this.contractEventListeners.get(key)!;
-    listeners.add(callback);
-
-    // 启动合约事件监听
-    this.startContractEventListener(contractAddress, eventName, abi);
-
-    // 返回取消监听的函数
-    return () => {
-      listeners.delete(callback);
-      // 如果没有监听器了，停止监听
-      if (listeners.size === 0) {
-        this.stopContractEventListener(contractAddress, eventName);
-        this.contractEventListeners.delete(key);
-      }
-    };
-  }
-
-  /**
-   * 启动合约事件监听
-   */
-  private startContractEventListener(
-    contractAddress: string,
-    eventName: string,
-    abi?: string[] | Abi,
-  ): void {
-    const key = `${contractAddress}:${eventName}`;
-
-    // 如果已经有监听器在运行，不需要重新启动
-    if (this.contractWatchUnsubscribes.has(key)) {
-      return;
-    }
-
-    try {
-      const client = this.getPublicClient();
-
-      // 构建 ABI
-      const eventAbi = abi
-        ? (typeof abi[0] === "string"
-          ? parseAbi(abi as string[])
-          : (abi as unknown as Abi))
-        : parseAbi([`event ${eventName}()`] as readonly string[]);
-
-      // 使用 viem 的 watchContractEvent 监听合约事件
-      const unsubscribe = client.watchContractEvent({
-        address: contractAddress as Address,
-        abi: eventAbi,
-        eventName: eventName,
-        onLogs: async (logs) => {
-          const listeners = this.contractEventListeners.get(key);
-          if (listeners) {
-            for (const log of logs) {
-              for (const listener of listeners) {
-                try {
-                  await Promise.resolve(listener(log));
-                } catch (error) {
-                  console.error("[Web3Client] 合约事件监听器错误:", error);
-                }
-              }
-            }
-          }
-        },
-        onError: (error) => {
-          console.error("[Web3Client] 合约事件监听错误:", error);
-        },
-      });
-
-      // 保存取消函数
-      this.contractWatchUnsubscribes.set(key, unsubscribe);
-    } catch (error) {
-      console.error(
-        `[Web3Client] 启动合约事件监听失败 (${contractAddress}:${eventName}):`,
-        error,
-      );
-    }
-  }
-
-  /**
-   * 停止合约事件监听
-   */
-  private stopContractEventListener(
-    contractAddress: string,
-    eventName: string,
-  ): void {
-    const key = `${contractAddress}:${eventName}`;
-
-    try {
-      // 取消 viem watch
-      const unsubscribe = this.contractWatchUnsubscribes.get(key);
-      if (unsubscribe) {
-        unsubscribe();
-        this.contractWatchUnsubscribes.delete(key);
-      }
-    } catch (error) {
-      console.error(
-        `[Web3Client] 停止合约事件监听失败 (${contractAddress}:${eventName}):`,
-        error,
-      );
-    }
-  }
-
-  /**
-   * 取消合约事件监听
-   * @param contractAddress 合约地址
-   * @param eventName 事件名称（可选，如果不提供则取消该合约的所有事件监听）
-   */
-  offContractEvent(contractAddress: string, eventName?: string): void {
-    if (eventName) {
-      const key = `${contractAddress}:${eventName}`;
-      this.contractEventListeners.delete(key);
-      this.stopContractEventListener(contractAddress, eventName);
-    } else {
-      // 取消该合约的所有事件监听
-      for (const [key, listeners] of this.contractEventListeners.entries()) {
-        if (key.startsWith(`${contractAddress}:`)) {
-          const eventName = key.split(":")[1];
-          this.stopContractEventListener(contractAddress, eventName);
-          listeners.clear();
-          this.contractEventListeners.delete(key);
-        }
-      }
     }
   }
 

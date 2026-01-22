@@ -50,7 +50,8 @@ describe("Web3 Utils", () => {
     });
 
     it("应该转换为 wei", () => {
-      expect(toWei("1", "ether")).toBe("1000000000000000000");
+      expect(toWei("10000", "ether")).toBe("10000000000000000000000");
+      expect(toWei("100000000", "ether")).toBe("100000000000000000000000000");
       expect(toWei("1", "gwei")).toBe("1000000000");
       expect(toWei("1", "kwei")).toBe("1000");
     });
