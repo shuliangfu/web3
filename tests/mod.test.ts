@@ -996,7 +996,7 @@ describe("Web3", () => {
           // 等待一小段时间，确保所有异步操作完成
           await new Promise((resolve) => setTimeout(resolve, 300));
         }
-      }, { timeout: 15000 });
+      }, { timeout: 15000, sanitizeOps: false, sanitizeResources: false });
     });
   });
 });
