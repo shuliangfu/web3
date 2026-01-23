@@ -23,6 +23,7 @@ import {
   createPublicClient,
   decodeFunctionData,
   encodeFunctionData,
+  getAddress,
   type Hash,
   type Hex,
   http,
@@ -36,6 +37,17 @@ import {
 } from "viem";
 // 导入 viem 账户模块（用于生成钱包）
 import { privateKeyToAccount } from "viem/accounts";
+// 内部工具（不对外 re-export）
+import {
+  findMatchingFunction,
+  formatAddressArgs,
+  getErrorMessage,
+} from "./utils.ts";
+// 内部合约代理（不通过 exports 暴露）
+import {
+  buildContractsProxy,
+  type ContractsProxy,
+} from "./internal/contract-proxy.ts";
 
 /**
  * 区块事件回调函数类型
@@ -173,95 +185,6 @@ export interface ContractReadOptions {
 }
 
 /**
- * 合约代理类
- * 提供通过合约名称访问合约的代理功能
- */
-class ContractProxy {
-  private web3Client: Web3Client;
-  private contractConfig: ContractConfig;
-
-  constructor(web3Client: Web3Client, contractConfig: ContractConfig) {
-    this.web3Client = web3Client;
-    this.contractConfig = contractConfig;
-  }
-
-  /**
-   * 读取合约数据（只读操作）
-   * @param functionName 函数名
-   * @param args 函数参数（可选）
-   * @returns 函数返回值
-   */
-  async readContract(
-    functionName: string,
-    args?: unknown[],
-  ): Promise<unknown> {
-    return await this.web3Client.readContract({
-      address: this.contractConfig.address,
-      functionName,
-      args,
-      abi: this.contractConfig.abi as
-        | string[]
-        | Array<Record<string, unknown>>
-        | Abi,
-    });
-  }
-
-  /**
-   * 调用合约方法（写入操作）
-   * @param functionName 函数名
-   * @param args 函数参数（可选）
-   * @param waitForConfirmation 是否等待交易确认（默认 true）
-   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
-   */
-  async callContract(
-    functionName: string,
-    args?: unknown[],
-    waitForConfirmation: boolean = true,
-  ): Promise<unknown> {
-    return await this.web3Client.callContract(
-      {
-        address: this.contractConfig.address,
-        functionName,
-        args,
-        abi: this.contractConfig.abi as
-          | string[]
-          | Array<Record<string, unknown>>
-          | Abi,
-      },
-      waitForConfirmation,
-    );
-  }
-
-  /**
-   * 获取合约地址
-   */
-  get address(): string {
-    return this.contractConfig.address;
-  }
-
-  /**
-   * 获取合约 ABI
-   */
-  get abi(): Abi | Array<Record<string, unknown>> {
-    return this.contractConfig.abi;
-  }
-
-  /**
-   * 获取合约名称
-   */
-  get name(): string {
-    return this.contractConfig.name;
-  }
-}
-
-/**
- * 合约代理对象类型
- */
-type ContractsProxy = {
-  [contractName: string]: ContractProxy;
-};
-
-/**
  * Web3 操作类
  * 提供 Web3 相关的操作方法
  */
@@ -306,27 +229,8 @@ export class Web3Client {
       throw new Error("服务端版本必须配置 rpcUrl");
     }
     this.config = config;
-
-    // 初始化合约代理对象
-    const contractsProxy: ContractsProxy = {};
-    if (config.contracts) {
-      const contracts = Array.isArray(config.contracts)
-        ? config.contracts
-        : [config.contracts];
-      for (const contract of contracts) {
-        if (!contract.name) {
-          throw new Error("合约配置必须包含 name 字段");
-        }
-        if (!contract.address) {
-          throw new Error(`合约 ${contract.name} 必须包含 address 字段`);
-        }
-        if (!contract.abi) {
-          throw new Error(`合约 ${contract.name} 必须包含 abi 字段`);
-        }
-        contractsProxy[contract.name] = new ContractProxy(this, contract);
-      }
-    }
-    this.contracts = contractsProxy;
+    // 初始化合约代理对象（使用 internal 的 buildContractsProxy）
+    this.contracts = buildContractsProxy(this, config.contracts);
   }
 
   /**
@@ -347,6 +251,9 @@ export class Web3Client {
     this.publicClient = null;
     this.walletClient = null;
     this.chain = null;
+    // 重置 WebSocket 相关，避免 rpcUrl/wss 变更后事件监听仍用旧连接
+    this.wsClient = null;
+    this.wsTransport = null;
   }
 
   /**
@@ -672,7 +579,7 @@ export class Web3Client {
         } else {
           // 尝试根据参数数量匹配函数重载
           const argsCount = options.args?.length || 0;
-          const matchedFunction = this.findMatchingFunction(
+          const matchedFunction = findMatchingFunction(
             abiSource as Abi | Array<Record<string, unknown>>,
             options.functionName,
             argsCount,
@@ -724,11 +631,15 @@ export class Web3Client {
       // 获取 nonce
       const nonce = await this.getTransactionCount(account.address);
 
+      // 地址与 args 中的地址统一格式化为校验和
+      const formattedAddress = getAddress(contractAddress) as Address;
+      const formattedArgs = formatAddressArgs(options.args) ?? options.args;
+
       // 编码函数调用数据
       const data = encodeFunctionData({
         abi: parsedAbi,
         functionName: options.functionName,
-        args: options.args as any,
+        args: formattedArgs as any,
       });
 
       // 获取 gas 价格（如果未提供）
@@ -760,7 +671,7 @@ export class Web3Client {
       } else {
         try {
           const estimatedGas = await client.estimateGas({
-            to: contractAddress as Address,
+            to: formattedAddress,
             data: data as Hex,
             value: options.value ? BigInt(options.value.toString()) : undefined,
             account: account.address,
@@ -776,7 +687,7 @@ export class Web3Client {
 
       // 构建交易对象
       const transaction: any = {
-        to: contractAddress as Address,
+        to: formattedAddress,
         data: data as Hex,
         value: options.value ? BigInt(options.value.toString()) : undefined,
         gas: gasLimit,
@@ -824,33 +735,23 @@ export class Web3Client {
 
         return extendedReceipt;
       } catch (receiptError) {
-        // 如果等待交易确认失败，可能是交易被回滚
         return {
           success: false,
           error: "交易确认失败",
-          message: receiptError instanceof Error
-            ? receiptError.message
-            : String(receiptError),
+          message: getErrorMessage(receiptError),
         } as ExtendedTransactionReceipt;
       }
     } catch (error) {
-      // 检查是否是用户取消交易
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage = getErrorMessage(error);
       if (
         errorMessage.includes("User rejected") ||
         errorMessage.includes("user rejected") ||
         errorMessage.includes("用户取消") ||
         errorMessage.includes("用户拒绝")
       ) {
-        // 用户取消交易，抛出特殊错误，不包含原始错误消息
         throw new Error("交易已取消");
       }
-      // 其他错误正常抛出
-      throw new Error(
-        `调用合约失败: ${errorMessage}`,
-      );
+      throw new Error(`调用合约失败: ${errorMessage}`);
     }
   }
 
@@ -880,75 +781,6 @@ export class Web3Client {
     }
     // 默认返回 uint256
     return "uint256";
-  }
-
-  /**
-   * 从 ABI 中查找匹配的函数（支持函数重载）
-   * 根据函数名和参数数量匹配正确的函数签名
-   * @param abi ABI 数组
-   * @param functionName 函数名
-   * @param argsCount 参数数量
-   * @param isView 是否为只读函数（readContract 为 true，支持 view 和 pure；callContract 为 false，支持 payable 和 nonpayable）
-   * @returns 匹配的函数，如果未找到则返回 null
-   */
-  private findMatchingFunction(
-    abi: Abi | Array<Record<string, unknown>>,
-    functionName: string,
-    argsCount: number,
-    isView: boolean = true,
-  ): unknown | null {
-    if (!Array.isArray(abi)) {
-      return null;
-    }
-
-    // 查找所有匹配函数名的函数
-    const matchingFunctions = abi.filter((item) => {
-      if (typeof item === "object" && item !== null) {
-        const abiItem = item as Record<string, unknown>;
-        if (abiItem.type === "function" && abiItem.name === functionName) {
-          // 如果是 readContract，查找 view 和 pure 函数
-          if (isView) {
-            return (
-              abiItem.stateMutability === "view" ||
-              abiItem.stateMutability === "pure"
-            );
-          }
-          // 如果是 callContract，查找 payable 和 nonpayable 函数
-          return (
-            abiItem.stateMutability === "payable" ||
-            abiItem.stateMutability === "nonpayable"
-          );
-        }
-      }
-      return false;
-    }) as Array<Record<string, unknown>>;
-
-    if (matchingFunctions.length === 0) {
-      return null;
-    }
-
-    // 如果只有一个匹配的函数，直接返回
-    if (matchingFunctions.length === 1) {
-      return matchingFunctions[0];
-    }
-
-    // 如果有多个匹配的函数（重载），根据参数数量匹配
-    for (const func of matchingFunctions) {
-      const inputs = func.inputs;
-      if (Array.isArray(inputs)) {
-        const paramCount = inputs.length;
-        // 如果参数数量匹配，返回该函数
-        if (paramCount === argsCount) {
-          return func;
-        }
-      } else if (argsCount === 0) {
-        // 如果没有 inputs 字段且参数数量为 0，也匹配
-        return func;
-      }
-    }
-
-    // 如果没有找到精确匹配，返回第一个匹配的函数（让 viem 处理）
-    return matchingFunctions[0];
   }
 
   /**
@@ -987,7 +819,7 @@ export class Web3Client {
         } else {
           // 尝试根据参数数量匹配函数重载
           const argsCount = options.args?.length || 0;
-          const matchedFunction = this.findMatchingFunction(
+          const matchedFunction = findMatchingFunction(
             abiSource as Abi | Array<Record<string, unknown>>,
             options.functionName,
             argsCount,
@@ -1043,23 +875,21 @@ export class Web3Client {
         }
       }
 
-      // 使用 viem 的 readContract
+      // 使用 viem 的 readContract（地址与 args 中的地址统一格式化为校验和）
+      const formattedAddress = getAddress(contractAddress) as Address;
+      const formattedArgs = formatAddressArgs(options.args) ?? options.args;
       const result = await client.readContract({
-        address: contractAddress as Address,
+        address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: options.args as any,
+        args: formattedArgs as any,
         account: options.from as Address | undefined,
       });
 
       // 如果只有一个返回值，直接返回；如果有多个，返回数组
       return result;
     } catch (error: unknown) {
-      // 检查是否是空数据错误
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
-
+      const errorMessage = getErrorMessage(error);
       // 检查是否是空数据或 revert 错误
       if (
         errorMessage.includes("revert") ||
@@ -1078,11 +908,7 @@ export class Web3Client {
             `错误: ${errorMessage}`,
         );
       }
-
-      // 其他错误直接抛出
-      throw new Error(
-        `读取合约失败: ${errorMessage}`,
-      );
+      throw new Error(`读取合约失败: ${errorMessage}`);
     }
   }
 
@@ -2191,18 +2017,21 @@ export class Web3Client {
    * @param address 地址
    * @param fromBlock 起始区块号（可选）
    * @param toBlock 结束区块号（可选，默认最新区块）
+   * @param options 可选配置，如 batchSize（默认 50，遇 RPC 限流可调小）
    * @returns 交易数组
    */
   async getAddressTransactions(
     address: string,
     fromBlock?: number,
     toBlock?: number,
+    options?: { batchSize?: number },
   ): Promise<unknown[]> {
     const client = this.getPublicClient();
     try {
       const currentBlock = toBlock ?? await this.getBlockNumber();
       const startBlock = fromBlock ?? Math.max(0, currentBlock - 1000); // 默认查询最近 1000 个区块
       const addressLower = address.toLowerCase();
+      const batchSize = options?.batchSize ?? 50;
 
       // 方法1：查询该地址作为 from 或 to 的交易（通过扫描区块）
       // 方法2：查询该地址相关的所有日志（包括事件日志中的 from/to）
@@ -2210,8 +2039,7 @@ export class Web3Client {
       const txHashes = new Set<string>();
 
       // 方法1：扫描区块，查找该地址作为 from 或 to 的交易
-      // 使用较小的批次大小，避免并发过多导致超时
-      const batchSize = 50;
+      // 使用可配置的批次大小，避免并发过多导致超时或 RPC 限流
       for (
         let blockNum = startBlock;
         blockNum <= currentBlock;
@@ -2312,6 +2140,7 @@ export class Web3Client {
       fromBlock?: number;
       toBlock?: number;
       abi?: string[]; // 可选：完整 ABI，用于解析参数
+      batchSize?: number; // 可选：区块扫描批次大小，默认 50，遇 RPC 限流可调小
     } = {},
   ): Promise<{
     transactions: Array<{
@@ -2357,8 +2186,8 @@ export class Web3Client {
         receipt?: unknown;
       }> = [];
 
-      // 批量扫描区块（每次扫描 50 个区块，避免并发过多导致超时）
-      const batchSize = 50;
+      // 批量扫描区块，batchSize 可配置（默认 50），遇 RPC 限流可调小
+      const batchSize = options.batchSize ?? 50;
       for (
         let blockNum = startBlock;
         blockNum <= currentBlock;
@@ -2430,16 +2259,7 @@ export class Web3Client {
                         }
                       }
 
-                      // 获取交易收据（可选）
-                      let receipt: unknown | undefined;
-                      let gasUsed: string | undefined;
-                      try {
-                        receipt = await this.getTransactionReceipt(txObj.hash);
-                        gasUsed = (receipt as any).gasUsed?.toString();
-                      } catch {
-                        // 获取收据失败，忽略
-                      }
-
+                      // 先收集交易信息，收据在区块扫描结束后并行批量拉取
                       allTransactions.push({
                         hash: txObj.hash,
                         from: txObj.from,
@@ -2447,12 +2267,12 @@ export class Web3Client {
                         blockNumber: i,
                         blockHash: block.hash,
                         timestamp: Number(block.timestamp),
-                        gasUsed,
+                        gasUsed: undefined as string | undefined,
                         gasPrice: txObj.gasPrice?.toString(),
                         value: txObj.value?.toString() || "0",
                         data: txObj.data,
                         args,
-                        receipt,
+                        receipt: undefined as unknown | undefined,
                       });
                     }
                   }
@@ -2479,6 +2299,21 @@ export class Web3Client {
 
         // 等待当前批次完成
         await Promise.all(blockPromises);
+      }
+
+      // 区块扫描结束后，并行批量拉取交易收据（替代循环内串行 await，减少总等待时间）
+      const hashes = allTransactions.map((t) => t.hash);
+      const receipts = await Promise.all(
+        hashes.map((h) =>
+          this.getTransactionReceipt(h).catch(() => null as unknown),
+        ),
+      );
+      for (let i = 0; i < allTransactions.length; i++) {
+        const r = receipts[i] as { gasUsed?: bigint } | null;
+        if (r) {
+          allTransactions[i].receipt = r;
+          allTransactions[i].gasUsed = r.gasUsed?.toString();
+        }
       }
 
       // 按区块号和时间戳倒序排序（最新的在前）

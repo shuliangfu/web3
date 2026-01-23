@@ -30,6 +30,17 @@ import {
   verifyMessage as viemVerifyMessage,
   type WalletClient,
 } from "viem";
+// 内部工具（不对外 re-export）
+import {
+  findMatchingFunction,
+  formatAddressArgs,
+  getErrorMessage,
+} from "../utils.ts";
+// 内部合约代理（不通过 exports 暴露）
+import {
+  buildContractsProxy,
+  type ContractsProxy,
+} from "../internal/contract-proxy.ts";
 
 /**
  * 扩展 Window 接口以支持 ethereum
@@ -120,95 +131,6 @@ export interface ContractReadOptions {
 }
 
 /**
- * 合约代理类
- * 提供通过合约名称访问合约的代理功能
- */
-class ContractProxy {
-  private web3Client: Web3Client;
-  private contractConfig: ContractConfig;
-
-  constructor(web3Client: Web3Client, contractConfig: ContractConfig) {
-    this.web3Client = web3Client;
-    this.contractConfig = contractConfig;
-  }
-
-  /**
-   * 读取合约数据（只读操作）
-   * @param functionName 函数名
-   * @param args 函数参数（可选）
-   * @returns 函数返回值
-   */
-  async readContract(
-    functionName: string,
-    args?: unknown[],
-  ): Promise<unknown> {
-    return await this.web3Client.readContract({
-      address: this.contractConfig.address,
-      functionName,
-      args,
-      abi: this.contractConfig.abi as
-        | string[]
-        | Array<Record<string, unknown>>
-        | Abi,
-    });
-  }
-
-  /**
-   * 调用合约方法（写入操作）
-   * @param functionName 函数名
-   * @param args 函数参数（可选）
-   * @param waitForConfirmation 是否等待交易确认（默认 true）
-   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
-   */
-  async callContract(
-    functionName: string,
-    args?: unknown[],
-    waitForConfirmation: boolean = true,
-  ): Promise<unknown> {
-    return await this.web3Client.callContract(
-      {
-        address: this.contractConfig.address,
-        functionName,
-        args,
-        abi: this.contractConfig.abi as
-          | string[]
-          | Array<Record<string, unknown>>
-          | Abi,
-      },
-      waitForConfirmation,
-    );
-  }
-
-  /**
-   * 获取合约地址
-   */
-  get address(): string {
-    return this.contractConfig.address;
-  }
-
-  /**
-   * 获取合约 ABI
-   */
-  get abi(): Abi | Array<Record<string, unknown>> {
-    return this.contractConfig.abi;
-  }
-
-  /**
-   * 获取合约名称
-   */
-  get name(): string {
-    return this.contractConfig.name;
-  }
-}
-
-/**
- * 合约代理对象类型
- */
-type ContractsProxy = {
-  [contractName: string]: ContractProxy;
-};
-
-/**
  * 客户端 Web3 操作类
  * 提供客户端 Web3 相关的操作方法
  */
@@ -234,27 +156,8 @@ export class Web3Client {
    */
   constructor(config: Web3Config = {}) {
     this.config = config;
-
-    // 初始化合约代理对象
-    const contractsProxy: ContractsProxy = {};
-    if (config.contracts) {
-      const contracts = Array.isArray(config.contracts)
-        ? config.contracts
-        : [config.contracts];
-      for (const contract of contracts) {
-        if (!contract.name) {
-          throw new Error("合约配置必须包含 name 字段");
-        }
-        if (!contract.address) {
-          throw new Error(`合约 ${contract.name} 必须包含 address 字段`);
-        }
-        if (!contract.abi) {
-          throw new Error(`合约 ${contract.name} 必须包含 abi 字段`);
-        }
-        contractsProxy[contract.name] = new ContractProxy(this, contract);
-      }
-    }
-    this.contracts = contractsProxy;
+    // 初始化合约代理对象（使用 internal 的 buildContractsProxy）
+    this.contracts = buildContractsProxy(this, config.contracts);
   }
 
   /**
@@ -404,75 +307,6 @@ export class Web3Client {
   }
 
   /**
-   * 从 ABI 中查找匹配的函数（支持函数重载）
-   * 根据函数名和参数数量匹配正确的函数签名
-   * @param abi ABI 数组
-   * @param functionName 函数名
-   * @param argsCount 参数数量
-   * @param isView 是否为只读函数（readContract 为 true，支持 view 和 pure；callContract 为 false，支持 payable 和 nonpayable）
-   * @returns 匹配的函数，如果未找到则返回 null
-   */
-  private findMatchingFunction(
-    abi: Abi | Array<Record<string, unknown>>,
-    functionName: string,
-    argsCount: number,
-    isView: boolean = true,
-  ): unknown | null {
-    if (!Array.isArray(abi)) {
-      return null;
-    }
-
-    // 查找所有匹配函数名的函数
-    const matchingFunctions = abi.filter((item) => {
-      if (typeof item === "object" && item !== null) {
-        const abiItem = item as Record<string, unknown>;
-        if (abiItem.type === "function" && abiItem.name === functionName) {
-          // 如果是 readContract，查找 view 和 pure 函数
-          if (isView) {
-            return (
-              abiItem.stateMutability === "view" ||
-              abiItem.stateMutability === "pure"
-            );
-          }
-          // 如果是 callContract，查找 payable 和 nonpayable 函数
-          return (
-            abiItem.stateMutability === "payable" ||
-            abiItem.stateMutability === "nonpayable"
-          );
-        }
-      }
-      return false;
-    }) as Array<Record<string, unknown>>;
-
-    if (matchingFunctions.length === 0) {
-      return null;
-    }
-
-    // 如果只有一个匹配的函数，直接返回
-    if (matchingFunctions.length === 1) {
-      return matchingFunctions[0];
-    }
-
-    // 如果有多个匹配的函数（重载），根据参数数量匹配
-    for (const func of matchingFunctions) {
-      const inputs = func.inputs;
-      if (Array.isArray(inputs)) {
-        const paramCount = inputs.length;
-        // 如果参数数量匹配，返回该函数
-        if (paramCount === argsCount) {
-          return func;
-        }
-      } else if (argsCount === 0) {
-        // 如果没有 inputs 字段且参数数量为 0，也匹配
-        return func;
-      }
-    }
-
-    // 如果没有找到精确匹配，返回第一个匹配的函数（让 viem 处理）
-    return matchingFunctions[0];
-  }
-
-  /**
    * 读取合约数据（只读操作）
    * @param options 合约读取选项
    * @returns 函数返回值
@@ -492,41 +326,30 @@ export class Web3Client {
       // 优先使用 options.abi，如果没有则使用配置中的 abi
       const abiSource = options.abi || this.config.abi;
 
-      // 如果提供了完整 ABI，直接使用
+      // 如果提供了完整 ABI
       if (abiSource && Array.isArray(abiSource) && abiSource.length > 0) {
         if (typeof abiSource[0] === "string") {
-          // 字符串数组格式的 ABI
           parsedAbi = parseAbi(abiSource as string[]);
         } else {
-          // JSON 对象数组格式的 ABI
-          parsedAbi = abiSource as unknown as Abi;
+          // JSON 对象数组：支持函数重载，按参数数量匹配
+          const argsCount = options.args?.length || 0;
+          const matched = findMatchingFunction(
+            abiSource as Abi | Array<Record<string, unknown>>,
+            options.functionName,
+            argsCount,
+            true, // readContract 使用 view/pure
+          );
+          parsedAbi = matched
+            ? ([matched] as unknown as Abi)
+            : (abiSource as unknown as Abi);
         }
       } else {
         throw new Error("请提供合约 ABI");
       }
 
-      // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
       const formattedAddress = getAddress(contractAddress) as Address;
+      const formattedArgs = formatAddressArgs(options.args) ?? options.args;
 
-      // 格式化 args 中的地址参数（如果参数是地址类型）
-      const formattedArgs = options.args?.map((arg) => {
-        // 如果参数是字符串且看起来像地址（42 个字符，以 0x 开头），则格式化
-        if (
-          typeof arg === "string" &&
-          arg.startsWith("0x") &&
-          arg.length === 42
-        ) {
-          try {
-            return getAddress(arg);
-          } catch {
-            // 如果不是有效地址，返回原值
-            return arg;
-          }
-        }
-        return arg;
-      });
-
-      // 使用 viem 的 readContract
       const result = await client.readContract({
         address: formattedAddress,
         abi: parsedAbi,
@@ -536,10 +359,7 @@ export class Web3Client {
 
       return result;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
-      throw new Error(`读取合约失败: ${errorMessage}`);
+      throw new Error(`读取合约失败: ${getErrorMessage(error)}`);
     }
   }
 
@@ -584,7 +404,7 @@ export class Web3Client {
       ) {
         // 尝试根据参数数量匹配函数重载
         const argsCount = options.args?.length || 0;
-        const matchedFunction = this.findMatchingFunction(
+        const matchedFunction = findMatchingFunction(
           abiSource as Abi | Array<Record<string, unknown>>,
           options.functionName,
           argsCount,
@@ -611,26 +431,8 @@ export class Web3Client {
         throw new Error("请提供合约 ABI");
       }
 
-      // 格式化地址，确保校验和正确（viem 要求地址必须是有效的校验和格式）
       const formattedAddress = getAddress(contractAddress) as Address;
-
-      // 格式化 args 中的地址参数（如果参数是地址类型）
-      const formattedArgs = options.args?.map((arg) => {
-        // 如果参数是字符串且看起来像地址（42 个字符，以 0x 开头），则格式化
-        if (
-          typeof arg === "string" &&
-          arg.startsWith("0x") &&
-          arg.length === 42
-        ) {
-          try {
-            return getAddress(arg);
-          } catch {
-            // 如果不是有效地址，返回原值
-            return arg;
-          }
-        }
-        return arg;
-      });
+      const formattedArgs = formatAddressArgs(options.args) ?? options.args;
 
       // 获取 chain
       let chain: Chain | undefined = (walletClient as any).chain ||
@@ -678,15 +480,11 @@ export class Web3Client {
         return {
           success: false,
           error: "交易确认失败",
-          message: receiptError instanceof Error
-            ? receiptError.message
-            : String(receiptError),
+          message: getErrorMessage(receiptError),
         };
       }
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage = getErrorMessage(error);
       if (
         errorMessage.includes("User rejected") ||
         errorMessage.includes("user rejected") ||
