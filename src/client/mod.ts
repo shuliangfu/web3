@@ -404,6 +404,75 @@ export class Web3Client {
   }
 
   /**
+   * 从 ABI 中查找匹配的函数（支持函数重载）
+   * 根据函数名和参数数量匹配正确的函数签名
+   * @param abi ABI 数组
+   * @param functionName 函数名
+   * @param argsCount 参数数量
+   * @param isView 是否为只读函数（readContract 为 true，支持 view 和 pure；callContract 为 false，支持 payable 和 nonpayable）
+   * @returns 匹配的函数，如果未找到则返回 null
+   */
+  private findMatchingFunction(
+    abi: Abi | Array<Record<string, unknown>>,
+    functionName: string,
+    argsCount: number,
+    isView: boolean = true,
+  ): unknown | null {
+    if (!Array.isArray(abi)) {
+      return null;
+    }
+
+    // 查找所有匹配函数名的函数
+    const matchingFunctions = abi.filter((item) => {
+      if (typeof item === "object" && item !== null) {
+        const abiItem = item as Record<string, unknown>;
+        if (abiItem.type === "function" && abiItem.name === functionName) {
+          // 如果是 readContract，查找 view 和 pure 函数
+          if (isView) {
+            return (
+              abiItem.stateMutability === "view" ||
+              abiItem.stateMutability === "pure"
+            );
+          }
+          // 如果是 callContract，查找 payable 和 nonpayable 函数
+          return (
+            abiItem.stateMutability === "payable" ||
+            abiItem.stateMutability === "nonpayable"
+          );
+        }
+      }
+      return false;
+    }) as Array<Record<string, unknown>>;
+
+    if (matchingFunctions.length === 0) {
+      return null;
+    }
+
+    // 如果只有一个匹配的函数，直接返回
+    if (matchingFunctions.length === 1) {
+      return matchingFunctions[0];
+    }
+
+    // 如果有多个匹配的函数（重载），根据参数数量匹配
+    for (const func of matchingFunctions) {
+      const inputs = func.inputs;
+      if (Array.isArray(inputs)) {
+        const paramCount = inputs.length;
+        // 如果参数数量匹配，返回该函数
+        if (paramCount === argsCount) {
+          return func;
+        }
+      } else if (argsCount === 0) {
+        // 如果没有 inputs 字段且参数数量为 0，也匹配
+        return func;
+      }
+    }
+
+    // 如果没有找到精确匹配，返回第一个匹配的函数（让 viem 处理）
+    return matchingFunctions[0];
+  }
+
+  /**
    * 读取合约数据（只读操作）
    * @param options 合约读取选项
    * @returns 函数返回值
