@@ -1039,8 +1039,9 @@ describe("Web3", () => {
 
         try {
           const currentBlock = await clientWithContract.getBlockNumber();
-          // 本地网络：直接扫描所有区块（从 0 到当前区块）
-          const fromBlock = 0;
+          // 本地网络：扫描最近的1万个区块
+          const scanRange = 10000;
+          const fromBlock = Math.max(0, currentBlock - scanRange);
           const toBlock = currentBlock;
 
           console.log(
