@@ -2468,7 +2468,7 @@ export class Web3Client {
                   errorMessage.includes("block not found")
                 ) {
                   // 本地网络中，某些区块可能不存在，这是正常的，直接跳过
-                  continue;
+                  return; // 跳过这个区块的处理
                 }
                 // 其他错误才记录警告
                 console.warn(`扫描区块 ${i} 失败:`, error);
