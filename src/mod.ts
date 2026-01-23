@@ -676,6 +676,7 @@ export class Web3Client {
             abiSource as Abi | Array<Record<string, unknown>>,
             options.functionName,
             argsCount,
+            true, // readContract 使用 view 函数
           );
 
           if (matchedFunction) {
@@ -887,12 +888,14 @@ export class Web3Client {
    * @param abi ABI 数组
    * @param functionName 函数名
    * @param argsCount 参数数量
+   * @param isView 是否为 view 函数（readContract 为 true，callContract 为 false）
    * @returns 匹配的函数，如果未找到则返回 null
    */
   private findMatchingFunction(
     abi: Abi | Array<Record<string, unknown>>,
     functionName: string,
     argsCount: number,
+    isView: boolean = true,
   ): unknown | null {
     if (!Array.isArray(abi)) {
       return null;
@@ -902,11 +905,17 @@ export class Web3Client {
     const matchingFunctions = abi.filter((item) => {
       if (typeof item === "object" && item !== null) {
         const abiItem = item as Record<string, unknown>;
-        return (
-          abiItem.type === "function" &&
-          abiItem.name === functionName &&
-          abiItem.stateMutability === "view"
-        );
+        if (abiItem.type === "function" && abiItem.name === functionName) {
+          // 如果是 readContract，只查找 view 函数
+          if (isView) {
+            return abiItem.stateMutability === "view";
+          }
+          // 如果是 callContract，查找非 view 函数（payable、nonpayable）
+          return (
+            abiItem.stateMutability === "payable" ||
+            abiItem.stateMutability === "nonpayable"
+          );
+        }
       }
       return false;
     }) as Array<Record<string, unknown>>;
@@ -979,6 +988,7 @@ export class Web3Client {
             abiSource as Abi | Array<Record<string, unknown>>,
             options.functionName,
             argsCount,
+            true, // readContract 使用 view 函数
           );
 
           if (matchedFunction) {
