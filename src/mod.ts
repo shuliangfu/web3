@@ -29,6 +29,7 @@ import {
   keccak256 as viemKeccak256,
   parseAbi,
   type PublicClient,
+  type TransactionReceipt,
   verifyMessage as viemVerifyMessage,
   type WalletClient,
   webSocket,
@@ -56,6 +57,19 @@ export type TransactionListener = (
  * 合约事件回调函数类型
  */
 export type ContractEventListener = (event: unknown) => void | Promise<void>;
+
+/**
+ * 扩展的交易收据类型
+ * 在 TransactionReceipt 基础上添加 success 和 error 字段
+ */
+export type ExtendedTransactionReceipt = TransactionReceipt & {
+  /** 交易是否成功（true: 成功, false: 失败, undefined: 未知状态） */
+  success?: boolean;
+  /** 错误信息（如果交易失败） */
+  error?: string;
+  /** 错误消息（如果交易确认失败） */
+  message?: string;
+};
 
 /**
  * 合约配置接口
@@ -581,25 +595,34 @@ export class Web3Client {
    * 等待交易确认
    * @param txHash 交易哈希
    * @param confirmations 确认数（默认 1）
-   * @returns 交易收据
+   * @returns 扩展的交易收据（包含 success 和 error 字段）
    */
   async waitForTransaction(
     txHash: string,
     confirmations: number = 1,
-  ): Promise<unknown> {
+  ): Promise<ExtendedTransactionReceipt> {
     const client = this.getPublicClient();
     try {
       const receipt = await client.waitForTransactionReceipt({
         hash: txHash as Hash,
         confirmations,
       });
-      return receipt;
+
+      // 创建扩展的交易收据
+      const extendedReceipt: ExtendedTransactionReceipt = {
+        ...receipt,
+        success: receipt.status === "success" ? true : receipt.status === "reverted" ? false : undefined,
+        error: receipt.status === "reverted" ? "交易执行失败，已被回滚" : undefined,
+      };
+
+      return extendedReceipt;
     } catch (error) {
-      throw new Error(
-        `等待交易确认失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      // 如果等待交易确认失败，返回包含错误信息的对象
+      return {
+        success: false,
+        error: "交易确认失败",
+        message: error instanceof Error ? error.message : String(error),
+      } as ExtendedTransactionReceipt;
     }
   }
 
@@ -607,12 +630,12 @@ export class Web3Client {
    * 调用合约方法（写入操作，服务端版本，使用 sendRawTransaction）
    * @param options 合约调用选项
    * @param waitForConfirmation 是否等待交易确认（默认 true）
-   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
+   * @returns 如果 waitForConfirmation 为 true，返回扩展的交易收据；否则返回交易哈希
    */
   async callContract(
     options: ContractCallOptions,
     waitForConfirmation: boolean = true,
-  ): Promise<unknown> {
+  ): Promise<ExtendedTransactionReceipt | Hash> {
     // 检查是否配置了私钥
     if (!this.config.privateKey) {
       throw new Error(
@@ -760,25 +783,16 @@ export class Web3Client {
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: hash as Hash,
           confirmations: 1,
-        }) as unknown as {
-          success: boolean | undefined;
-          error: string | undefined;
+        });
+
+        // 创建扩展的交易收据
+        const extendedReceipt: ExtendedTransactionReceipt = {
+          ...receipt,
+          success: receipt.status === "success" ? true : receipt.status === "reverted" ? false : undefined,
+          error: receipt.status === "reverted" ? "交易执行失败，已被回滚" : undefined,
         };
 
-        // 检查交易状态
-        if ((receipt as any).status === "success") {
-          receipt.success = true;
-          return receipt;
-        } else if ((receipt as any).status === "reverted") {
-          receipt.error = "交易执行失败，已被回滚" as const;
-          receipt.success = false;
-          return receipt;
-        } else {
-          // 未知状态，返回收据让调用者判断
-          receipt.error = "未知状态" as const;
-          receipt.success = undefined;
-          return receipt;
-        }
+        return extendedReceipt;
       } catch (receiptError) {
         // 如果等待交易确认失败，可能是交易被回滚
         return {
@@ -787,7 +801,7 @@ export class Web3Client {
           message: receiptError instanceof Error
             ? receiptError.message
             : String(receiptError),
-        };
+        } as ExtendedTransactionReceipt;
       }
     } catch (error) {
       // 检查是否是用户取消交易
