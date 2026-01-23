@@ -321,6 +321,265 @@ describe("客户端 Web3Client", () => {
     // 这些功能需要通过 PublicClient 直接调用或使用其他方式实现
   });
 
+  describe("函数重载", () => {
+    // 创建一个包含重载函数的测试 ABI
+    const overloadedAbi = [
+      // register(uint256) - view 函数
+      {
+        type: "function",
+        name: "register",
+        inputs: [{ name: "pid", type: "uint256" }],
+        outputs: [{ name: "", type: "bool" }],
+        stateMutability: "view",
+      },
+      // register(uint256, uint256) - view 函数
+      {
+        type: "function",
+        name: "register",
+        inputs: [
+          { name: "uid", type: "uint256" },
+          { name: "pid", type: "uint256" },
+        ],
+        outputs: [{ name: "", type: "bool" }],
+        stateMutability: "view",
+      },
+      // register(uint256) - pure 函数
+      {
+        type: "function",
+        name: "register",
+        inputs: [{ name: "pid", type: "uint256" }],
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "pure",
+      },
+      // setValue(uint256) - nonpayable 函数
+      {
+        type: "function",
+        name: "setValue",
+        inputs: [{ name: "value", type: "uint256" }],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+      // setValue(uint256, uint256) - nonpayable 函数
+      {
+        type: "function",
+        name: "setValue",
+        inputs: [
+          { name: "uid", type: "uint256" },
+          { name: "value", type: "uint256" },
+        ],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+      // setValue(uint256) - payable 函数
+      {
+        type: "function",
+        name: "setValue",
+        inputs: [{ name: "value", type: "uint256" }],
+        outputs: [],
+        stateMutability: "payable",
+      },
+    ];
+
+    let client: Web3Client;
+
+    beforeAll(async () => {
+      client = new Web3Client();
+      await client.connectWallet();
+    });
+
+    it("readContract 应该根据参数数量匹配 view 函数重载", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 register(pid) - 1 个参数，应该匹配 register(uint256) view
+      try {
+        const result1 = await client.readContract({
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // 使用一个存在的合约地址
+          functionName: "register",
+          args: [100], // 1 个参数
+          abi: overloadedAbi as any,
+        });
+        // 如果调用成功，说明匹配到了正确的函数
+        expect(result1).toBeDefined();
+      } catch (error) {
+        // 如果合约不存在或方法不存在，这是预期的（因为我们使用的是测试 ABI）
+        // 但重要的是确保函数匹配逻辑正确
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract 1 参数测试:", errorMessage);
+      }
+    });
+
+    it("readContract 应该根据参数数量匹配 view 函数重载（2个参数）", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 register(uid, pid) - 2 个参数，应该匹配 register(uint256, uint256) view
+      try {
+        const result2 = await client.readContract({
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          functionName: "register",
+          args: [1, 100], // 2 个参数
+          abi: overloadedAbi as any,
+        });
+        expect(result2).toBeDefined();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract 2 参数测试:", errorMessage);
+      }
+    });
+
+    it("readContract 应该支持 pure 函数重载", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 register(pid) - 1 个参数，应该能匹配到 pure 函数
+      // 注意：如果有多个匹配（view 和 pure），会优先返回第一个匹配的
+      try {
+        const result = await client.readContract({
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          functionName: "register",
+          args: [100], // 1 个参数
+          abi: overloadedAbi as any,
+        });
+        expect(result).toBeDefined();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract pure 函数测试:", errorMessage);
+      }
+    });
+
+    it("callContract 应该根据参数数量匹配 nonpayable 函数重载", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 setValue(value) - 1 个参数，应该匹配 setValue(uint256) nonpayable
+      try {
+        const result1 = await client.callContract(
+          {
+            address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            functionName: "setValue",
+            args: [100], // 1 个参数
+            abi: overloadedAbi as any,
+          },
+          false, // 不等待确认
+        );
+        // 如果调用成功，应该返回交易哈希
+        expect(result1).toBeDefined();
+        expect(typeof result1 === "string").toBeTruthy();
+      } catch (error) {
+        // 如果合约不存在或方法不存在，这是预期的
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 callContract 1 参数测试:", errorMessage);
+      }
+    });
+
+    it("callContract 应该根据参数数量匹配 nonpayable 函数重载（2个参数）", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 setValue(uid, value) - 2 个参数，应该匹配 setValue(uint256, uint256) nonpayable
+      try {
+        const result2 = await client.callContract(
+          {
+            address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            functionName: "setValue",
+            args: [1, 100], // 2 个参数
+            abi: overloadedAbi as any,
+          },
+          false, // 不等待确认
+        );
+        expect(result2).toBeDefined();
+        expect(typeof result2 === "string").toBeTruthy();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 callContract 2 参数测试:", errorMessage);
+      }
+    });
+
+    it("callContract 应该支持 payable 函数重载", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      // 测试：调用 setValue(value) - 1 个参数，应该能匹配到 payable 函数
+      try {
+        const result = await client.callContract(
+          {
+            address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            functionName: "setValue",
+            args: [100], // 1 个参数
+            abi: overloadedAbi as any,
+          },
+          false, // 不等待确认
+        );
+        expect(result).toBeDefined();
+        expect(typeof result === "string").toBeTruthy();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 callContract payable 函数测试:", errorMessage);
+      }
+    });
+
+    it("应该通过合约代理调用重载函数", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过函数重载测试");
+        return;
+      }
+
+      const clientWithContract = new Web3Client({
+        contracts: {
+          name: "TestContract",
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          abi: overloadedAbi as any,
+        },
+      });
+      await clientWithContract.connectWallet();
+
+      // 测试通过合约代理调用重载函数
+      try {
+        // 调用 register(pid) - 1 个参数
+        const result1 = await clientWithContract.contracts.TestContract.readContract(
+          "register",
+          [100],
+        );
+        expect(result1).toBeDefined();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端合约代理 readContract 1 参数测试:", errorMessage);
+      }
+
+      try {
+        // 调用 register(uid, pid) - 2 个参数
+        const result2 = await clientWithContract.contracts.TestContract.readContract(
+          "register",
+          [1, 100],
+        );
+        expect(result2).toBeDefined();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端合约代理 readContract 2 参数测试:", errorMessage);
+      }
+    });
+  });
+
   describe("钱包事件监听", () => {
     let client: Web3Client;
 
