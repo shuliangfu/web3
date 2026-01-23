@@ -888,7 +888,7 @@ export class Web3Client {
    * @param abi ABI 数组
    * @param functionName 函数名
    * @param argsCount 参数数量
-   * @param isView 是否为 view 函数（readContract 为 true，callContract 为 false）
+   * @param isView 是否为只读函数（readContract 为 true，支持 view 和 pure；callContract 为 false，支持 payable 和 nonpayable）
    * @returns 匹配的函数，如果未找到则返回 null
    */
   private findMatchingFunction(
@@ -906,11 +906,14 @@ export class Web3Client {
       if (typeof item === "object" && item !== null) {
         const abiItem = item as Record<string, unknown>;
         if (abiItem.type === "function" && abiItem.name === functionName) {
-          // 如果是 readContract，只查找 view 函数
+          // 如果是 readContract，查找 view 和 pure 函数
           if (isView) {
-            return abiItem.stateMutability === "view";
+            return (
+              abiItem.stateMutability === "view" ||
+              abiItem.stateMutability === "pure"
+            );
           }
-          // 如果是 callContract，查找非 view 函数（payable、nonpayable）
+          // 如果是 callContract，查找 payable 和 nonpayable 函数
           return (
             abiItem.stateMutability === "payable" ||
             abiItem.stateMutability === "nonpayable"
