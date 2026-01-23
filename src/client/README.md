@@ -51,7 +51,6 @@ bunx jsr add @dreamer/web3/client
 - **钱包交互**：
   - 消息签名和验证
   - 合约交互（通过钱包签名）
-  - **函数重载支持**：自动根据参数数量匹配正确的函数签名（支持 view/pure 和 payable/nonpayable）
   - 交易确认等待
 - **事件监听**：
   - 账户变化监听
@@ -123,60 +122,6 @@ const receipt = await web3.callContract({
 }, true); // 等待确认
 
 console.log("交易收据:", receipt);
-```
-
-### 函数重载支持
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3/client";
-
-const web3 = new Web3Client();
-await web3.connectWallet();
-
-// 合约有重载函数：register(uint256 pid) 和 register(uint256 uid, uint256 pid)
-const abi = [
-  {
-    name: "register",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "pid", type: "uint256" }],
-    outputs: [{ type: "bool" }],
-  },
-  {
-    name: "register",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "uid", type: "uint256" },
-      { name: "pid", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-  },
-];
-
-// 自动匹配 register(uint256 pid) - 1 个参数
-const result1 = await web3.readContract({
-  address: "0x...",
-  abi,
-  functionName: "register",
-  args: [100], // 自动匹配 1 个参数的版本
-});
-
-// 自动匹配 register(uint256 uid, uint256 pid) - 2 个参数
-const result2 = await web3.readContract({
-  address: "0x...",
-  abi,
-  functionName: "register",
-  args: [1, 100], // 自动匹配 2 个参数的版本
-});
-
-// callContract 也支持函数重载（payable/nonpayable）
-await web3.callContract({
-  address: "0x...",
-  abi,
-  functionName: "setValue",
-  args: [100], // 根据参数数量自动匹配
-});
 ```
 
 ### 合约代理功能
@@ -354,16 +299,14 @@ const contractAddress = computeContractAddress(
 #### 合约方法
 
 - `readContract(options)`: 读取合约数据（只读方法）
-  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（view/pure）
 - `callContract(options, waitForConfirmation?)`:
   调用合约方法（通过钱包签名），返回交易收据或交易哈希
-  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（payable/nonpayable）
 
 #### 合约代理
 
 - `contracts[合约名称]`: 通过合约名称访问合约代理
-  - `readContract(functionName, args?)`: 读取合约数据（支持函数重载）
-  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法（支持函数重载）
+  - `readContract(functionName, args?)`: 读取合约数据
+  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
   - `address`: 获取合约地址
   - `abi`: 获取合约 ABI
   - `name`: 获取合约名称

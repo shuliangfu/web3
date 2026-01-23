@@ -52,7 +52,6 @@ bunx jsr add @dreamer/web3
 - **合约交互**：
   - 读取合约数据（只读方法）
   - 调用合约方法（需要私钥签名）
-  - **函数重载支持**：自动根据参数数量匹配正确的函数签名（支持 view/pure 和 payable/nonpayable）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
   - 合约代理功能（通过 `web3.contracts.合约名称` 访问）
@@ -133,61 +132,6 @@ const result = await web3.readContract({
 });
 
 console.log("总供应量:", result);
-```
-
-### 函数重载支持
-
-```typescript
-import { Web3Client } from "jsr:@dreamer/web3";
-
-const web3 = new Web3Client({
-  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
-});
-
-// 合约有重载函数：register(uint256 pid) 和 register(uint256 uid, uint256 pid)
-const abi = [
-  {
-    name: "register",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "pid", type: "uint256" }],
-    outputs: [{ type: "bool" }],
-  },
-  {
-    name: "register",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "uid", type: "uint256" },
-      { name: "pid", type: "uint256" },
-    ],
-    outputs: [{ type: "bool" }],
-  },
-];
-
-// 自动匹配 register(uint256 pid) - 1 个参数
-const result1 = await web3.readContract({
-  address: "0x...",
-  abi,
-  functionName: "register",
-  args: [100], // 自动匹配 1 个参数的版本
-});
-
-// 自动匹配 register(uint256 uid, uint256 pid) - 2 个参数
-const result2 = await web3.readContract({
-  address: "0x...",
-  abi,
-  functionName: "register",
-  args: [1, 100], // 自动匹配 2 个参数的版本
-});
-
-// callContract 也支持函数重载（payable/nonpayable）
-await web3.callContract({
-  address: "0x...",
-  abi,
-  functionName: "setValue",
-  args: [100], // 根据参数数量自动匹配
-});
 ```
 
 ### 合约代理功能
@@ -437,10 +381,8 @@ const contractAddress = computeContractAddress(
 #### 合约方法
 
 - `readContract(options)`: 读取合约数据（只读方法）
-  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（view/pure）
 - `callContract(options, waitForConfirmation?)`:
   调用合约方法（需要私钥，服务端使用）
-  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（payable/nonpayable）
 - `getCode(address)`: 获取合约字节码
 - `isContract(address)`: 检查地址是否为合约
 - `getAddressTransactions(address, fromBlock?, toBlock?)`: 获取地址相关的交易
@@ -449,8 +391,8 @@ const contractAddress = computeContractAddress(
 #### 合约代理
 
 - `contracts[合约名称]`: 通过合约名称访问合约代理
-  - `readContract(functionName, args?)`: 读取合约数据（支持函数重载）
-  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法（支持函数重载）
+  - `readContract(functionName, args?)`: 读取合约数据
+  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
   - `address`: 获取合约地址
   - `abi`: 获取合约 ABI
   - `name`: 获取合约名称
@@ -518,26 +460,27 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/mod";
 
 ## 📊 测试报告
 
-本库经过全面测试，所有 102 个测试用例均已通过，测试覆盖率达到 100%。详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
+本库经过全面测试，所有 116 个测试用例均已通过，测试覆盖率达到 100%。详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
 **测试统计**：
-- **总测试数**: 102 (Deno) / 99 (Bun)
-- **通过**: 102 ✅ (Deno) / 99 ✅ (Bun)
+- **总测试数**: 116 (Deno)
+- **通过**: 116 ✅
 - **失败**: 0
 - **通过率**: 100% ✅
-- **测试执行时间**: ~44 秒 (Deno) / ~31 秒 (Bun)
+- **测试执行时间**: ~10 秒 (Deno)
 - **测试覆盖**: 所有公共 API、边界情况、错误处理
-- **测试环境**: Deno 2.6.4+, Bun 1.3.5
+- **测试环境**: Deno 2.6.5, Anvil 本地测试网络 (Chain ID: 31337)
 
 **测试类型**：
 - ✅ 单元测试（32 个）
-- ✅ 集成测试（52 个）
-- ✅ 边界情况和错误处理测试（18 个）
+- ✅ 集成测试（59 个）
+- ✅ 客户端测试（25 个）
 
 **测试亮点**：
 - ✅ 所有功能、边界情况、错误处理都有完整的测试覆盖
 - ✅ 集成测试验证了端到端的完整流程
-- ✅ 真实区块链网络测试（BSC 测试网）
+- ✅ 本地区块链网络测试（Anvil）
+- ✅ 服务端和客户端双版本测试覆盖
 
 查看完整测试报告：[TEST_REPORT.md](./TEST_REPORT.md)
 
