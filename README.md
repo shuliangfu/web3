@@ -4,7 +4,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-102%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-116%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -52,6 +52,7 @@ bunx jsr add @dreamer/web3
 - **合约交互**：
   - 读取合约数据（只读方法）
   - 调用合约方法（需要私钥签名）
+  - **函数重载支持**：自动根据参数数量匹配正确的函数签名（支持 view/pure 和 payable/nonpayable）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
   - 合约代理功能（通过 `web3.contracts.合约名称` 访问）
@@ -132,6 +133,61 @@ const result = await web3.readContract({
 });
 
 console.log("总供应量:", result);
+```
+
+### 函数重载支持
+
+```typescript
+import { Web3Client } from "jsr:@dreamer/web3";
+
+const web3 = new Web3Client({
+  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+});
+
+// 合约有重载函数：register(uint256 pid) 和 register(uint256 uid, uint256 pid)
+const abi = [
+  {
+    name: "register",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "pid", type: "uint256" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    name: "register",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "uid", type: "uint256" },
+      { name: "pid", type: "uint256" },
+    ],
+    outputs: [{ type: "bool" }],
+  },
+];
+
+// 自动匹配 register(uint256 pid) - 1 个参数
+const result1 = await web3.readContract({
+  address: "0x...",
+  abi,
+  functionName: "register",
+  args: [100], // 自动匹配 1 个参数的版本
+});
+
+// 自动匹配 register(uint256 uid, uint256 pid) - 2 个参数
+const result2 = await web3.readContract({
+  address: "0x...",
+  abi,
+  functionName: "register",
+  args: [1, 100], // 自动匹配 2 个参数的版本
+});
+
+// callContract 也支持函数重载（payable/nonpayable）
+await web3.callContract({
+  address: "0x...",
+  abi,
+  functionName: "setValue",
+  args: [100], // 根据参数数量自动匹配
+});
 ```
 
 ### 合约代理功能
@@ -381,8 +437,10 @@ const contractAddress = computeContractAddress(
 #### 合约方法
 
 - `readContract(options)`: 读取合约数据（只读方法）
+  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（view/pure）
 - `callContract(options, waitForConfirmation?)`:
   调用合约方法（需要私钥，服务端使用）
+  - **支持函数重载**：自动根据参数数量匹配正确的函数签名（payable/nonpayable）
 - `getCode(address)`: 获取合约字节码
 - `isContract(address)`: 检查地址是否为合约
 - `getAddressTransactions(address, fromBlock?, toBlock?)`: 获取地址相关的交易
@@ -391,8 +449,8 @@ const contractAddress = computeContractAddress(
 #### 合约代理
 
 - `contracts[合约名称]`: 通过合约名称访问合约代理
-  - `readContract(functionName, args?)`: 读取合约数据
-  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
+  - `readContract(functionName, args?)`: 读取合约数据（支持函数重载）
+  - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法（支持函数重载）
   - `address`: 获取合约地址
   - `abi`: 获取合约 ABI
   - `name`: 获取合约名称
