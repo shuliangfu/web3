@@ -676,7 +676,7 @@ export class Web3Client {
             abiSource as Abi | Array<Record<string, unknown>>,
             options.functionName,
             argsCount,
-            true, // readContract 使用 view 函数
+            false, // callContract 使用非 view 函数（payable/nonpayable）
           );
 
           if (matchedFunction) {
