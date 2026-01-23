@@ -657,15 +657,44 @@ export class Web3Client {
       // 优先使用 options.abi，如果没有则使用配置中的 abi
       const abiSource = options.abi || this.config.abi;
 
-      // 如果提供了完整 ABI，直接使用
-      if (abiSource && Array.isArray(abiSource) && abiSource.length > 0) {
-        if (typeof abiSource[0] === "string") {
-          // 字符串数组格式的 ABI
-          parsedAbi = parseAbi(abiSource as string[]);
-        } else {
-          // JSON 对象数组格式的 ABI
+      // 如果提供了完整 ABI JSON 对象数组，尝试匹配函数重载
+      if (
+        abiSource &&
+        Array.isArray(abiSource) &&
+        abiSource.length > 0 &&
+        typeof abiSource[0] === "object" &&
+        abiSource[0] !== null &&
+        !Array.isArray(abiSource[0])
+      ) {
+        // 如果提供了函数签名，直接使用完整 ABI（viem 会自动处理重载）
+        if (options.functionSignature) {
           parsedAbi = abiSource as unknown as Abi;
+        } else {
+          // 尝试根据参数数量匹配函数重载
+          const argsCount = options.args?.length || 0;
+          const matchedFunction = this.findMatchingFunction(
+            abiSource as Abi | Array<Record<string, unknown>>,
+            options.functionName,
+            argsCount,
+          );
+
+          if (matchedFunction) {
+            // 如果找到匹配的函数，只使用该函数构建 ABI
+            parsedAbi = [matchedFunction] as unknown as Abi;
+          } else {
+            // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
+            parsedAbi = abiSource as unknown as Abi;
+          }
         }
+      } // 如果提供了字符串数组格式的 ABI
+      else if (
+        abiSource &&
+        Array.isArray(abiSource) &&
+        abiSource.length > 0 &&
+        typeof abiSource[0] === "string"
+      ) {
+        // 字符串数组格式的 ABI
+        parsedAbi = parseAbi(abiSource as string[]);
       } // 如果提供了函数签名，使用它
       else if (options.functionSignature) {
         parsedAbi = parseAbi(
@@ -853,6 +882,64 @@ export class Web3Client {
   }
 
   /**
+   * 从 ABI 中查找匹配的函数（支持函数重载）
+   * 根据函数名和参数数量匹配正确的函数签名
+   * @param abi ABI 数组
+   * @param functionName 函数名
+   * @param argsCount 参数数量
+   * @returns 匹配的函数，如果未找到则返回 null
+   */
+  private findMatchingFunction(
+    abi: Abi | Array<Record<string, unknown>>,
+    functionName: string,
+    argsCount: number,
+  ): unknown | null {
+    if (!Array.isArray(abi)) {
+      return null;
+    }
+
+    // 查找所有匹配函数名的函数
+    const matchingFunctions = abi.filter((item) => {
+      if (typeof item === "object" && item !== null) {
+        const abiItem = item as Record<string, unknown>;
+        return (
+          abiItem.type === "function" &&
+          abiItem.name === functionName &&
+          abiItem.stateMutability === "view"
+        );
+      }
+      return false;
+    }) as Array<Record<string, unknown>>;
+
+    if (matchingFunctions.length === 0) {
+      return null;
+    }
+
+    // 如果只有一个匹配的函数，直接返回
+    if (matchingFunctions.length === 1) {
+      return matchingFunctions[0];
+    }
+
+    // 如果有多个匹配的函数（重载），根据参数数量匹配
+    for (const func of matchingFunctions) {
+      const inputs = func.inputs;
+      if (Array.isArray(inputs)) {
+        const paramCount = inputs.length;
+        // 如果参数数量匹配，返回该函数
+        if (paramCount === argsCount) {
+          return func;
+        }
+      } else if (argsCount === 0) {
+        // 如果没有 inputs 字段且参数数量为 0，也匹配
+        return func;
+      }
+    }
+
+    // 如果没有找到精确匹配，返回第一个匹配的函数（让 viem 处理）
+    return matchingFunctions[0];
+  }
+
+  /**
    * 读取合约数据（只读操作）
    * @param options 合约读取选项
    * @returns 函数返回值
@@ -873,7 +960,7 @@ export class Web3Client {
       // 优先使用 options.abi，如果没有则使用配置中的 abi
       const abiSource = options.abi || this.config.abi;
 
-      // 如果提供了完整 ABI JSON 对象数组，直接使用（推荐方式，可以正确处理复杂返回类型如 tuple）
+      // 如果提供了完整 ABI JSON 对象数组，尝试匹配函数重载
       if (
         abiSource &&
         Array.isArray(abiSource) &&
@@ -882,8 +969,26 @@ export class Web3Client {
         abiSource[0] !== null &&
         !Array.isArray(abiSource[0])
       ) {
-        // 使用 ABI JSON 对象数组，viem 会自动处理 tuple 类型
-        parsedAbi = abiSource as unknown as Abi;
+        // 如果提供了函数签名，直接使用完整 ABI（viem 会自动处理重载）
+        if (options.functionSignature) {
+          parsedAbi = abiSource as unknown as Abi;
+        } else {
+          // 尝试根据参数数量匹配函数重载
+          const argsCount = options.args?.length || 0;
+          const matchedFunction = this.findMatchingFunction(
+            abiSource as Abi | Array<Record<string, unknown>>,
+            options.functionName,
+            argsCount,
+          );
+
+          if (matchedFunction) {
+            // 如果找到匹配的函数，只使用该函数构建 ABI
+            parsedAbi = [matchedFunction] as unknown as Abi;
+          } else {
+            // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
+            parsedAbi = abiSource as unknown as Abi;
+          }
+        }
       } // 如果提供了 returnType 且是 tuple 类型，构建 ABI
       else if (options.returnType && options.returnType.startsWith("tuple")) {
         const paramTypes = options.args?.map((arg) => this.inferArgType(arg)) ||
