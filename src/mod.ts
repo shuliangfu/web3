@@ -2458,6 +2458,19 @@ export class Web3Client {
                   }
                 }
               } catch (error) {
+                // 忽略不存在的区块（本地网络可能没有那么多区块）
+                const errorMessage = error instanceof Error
+                  ? error.message
+                  : String(error);
+                if (
+                  errorMessage.includes("BlockNotFoundError") ||
+                  errorMessage.includes("could not be found") ||
+                  errorMessage.includes("block not found")
+                ) {
+                  // 本地网络中，某些区块可能不存在，这是正常的，直接跳过
+                  continue;
+                }
+                // 其他错误才记录警告
                 console.warn(`扫描区块 ${i} 失败:`, error);
               }
             })(),
