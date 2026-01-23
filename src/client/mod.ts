@@ -573,15 +573,40 @@ export class Web3Client {
       // 优先使用 options.abi，如果没有则使用配置中的 abi
       const abiSource = options.abi || this.config.abi;
 
-      // 如果提供了完整 ABI，直接使用
-      if (abiSource && Array.isArray(abiSource) && abiSource.length > 0) {
-        if (typeof abiSource[0] === "string") {
-          // 字符串数组格式的 ABI
-          parsedAbi = parseAbi(abiSource as string[]);
+      // 如果提供了完整 ABI JSON 对象数组，尝试匹配函数重载
+      if (
+        abiSource &&
+        Array.isArray(abiSource) &&
+        abiSource.length > 0 &&
+        typeof abiSource[0] === "object" &&
+        abiSource[0] !== null &&
+        !Array.isArray(abiSource[0])
+      ) {
+        // 尝试根据参数数量匹配函数重载
+        const argsCount = options.args?.length || 0;
+        const matchedFunction = this.findMatchingFunction(
+          abiSource as Abi | Array<Record<string, unknown>>,
+          options.functionName,
+          argsCount,
+          false, // callContract 使用 payable/nonpayable 函数
+        );
+
+        if (matchedFunction) {
+          // 如果找到匹配的函数，只使用该函数构建 ABI
+          parsedAbi = [matchedFunction] as unknown as Abi;
         } else {
-          // JSON 对象数组格式的 ABI
+          // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
           parsedAbi = abiSource as unknown as Abi;
         }
+      } // 如果提供了字符串数组格式的 ABI
+      else if (
+        abiSource &&
+        Array.isArray(abiSource) &&
+        abiSource.length > 0 &&
+        typeof abiSource[0] === "string"
+      ) {
+        // 字符串数组格式的 ABI
+        parsedAbi = parseAbi(abiSource as string[]);
       } else {
         throw new Error("请提供合约 ABI");
       }
