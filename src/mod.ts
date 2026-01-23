@@ -39,6 +39,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 // 内部工具（不对外 re-export）
 import {
+  asViemAbi,
   findMatchingFunction,
   formatAddressArgs,
   getErrorMessage,
@@ -113,6 +114,10 @@ export interface Web3Config {
   address?: string;
   /** 合约配置（单个合约对象或合约数组） */
   contracts?: ContractConfig | ContractConfig[];
+  /** WebSocket URL（可选，用于事件监听；未设置时尝试从 rpcUrl 推导） */
+  wssUrl?: string;
+  /** 同 wssUrl，别名 */
+  wss?: string;
 
   /** 其他配置选项 */
   [key: string]: unknown;
@@ -183,6 +188,9 @@ export interface ContractReadOptions {
   /** 返回类型（可选，默认 "uint256"）。对于 tuple 类型，格式如 "tuple(address,address,string,uint256,uint256,uint256)" */
   returnType?: string;
 }
+
+/** viem 的 PublicClient / WalletClient 在运行时可能带有 chain，类型上未必导出；用于替代 (client as any).chain，比 as any 更安全 */
+type ClientWithOptionalChain = { chain?: Chain };
 
 /**
  * Web3 操作类
@@ -297,8 +305,8 @@ export class Web3Client {
     }
 
     // 优先使用 wssUrl，如果没有则尝试从 rpcUrl 转换，或使用 wss 配置
-    const wssUrl = (this.config as any).wssUrl ||
-      (this.config as any).wss ||
+    const wssUrl = this.config.wssUrl ??
+      this.config.wss ??
       (this.config.rpcUrl?.replace(/^http:/, "ws:").replace(/^https:/, "wss:"));
 
     if (!wssUrl) {
@@ -575,7 +583,7 @@ export class Web3Client {
       ) {
         // 如果提供了函数签名，直接使用完整 ABI（viem 会自动处理重载）
         if (options.functionSignature) {
-          parsedAbi = abiSource as unknown as Abi;
+          parsedAbi = asViemAbi(abiSource);
         } else {
           // 尝试根据参数数量匹配函数重载
           const argsCount = options.args?.length || 0;
@@ -587,11 +595,9 @@ export class Web3Client {
           );
 
           if (matchedFunction) {
-            // 如果找到匹配的函数，只使用该函数构建 ABI
-            parsedAbi = [matchedFunction] as unknown as Abi;
+            parsedAbi = asViemAbi([matchedFunction]);
           } else {
-            // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
-            parsedAbi = abiSource as unknown as Abi;
+            parsedAbi = asViemAbi(abiSource);
           }
         }
       } // 如果提供了字符串数组格式的 ABI
@@ -639,7 +645,7 @@ export class Web3Client {
       const data = encodeFunctionData({
         abi: parsedAbi,
         functionName: options.functionName,
-        args: formattedArgs as any,
+        args: formattedArgs as readonly unknown[] | undefined,
       });
 
       // 获取 gas 价格（如果未提供）
@@ -815,7 +821,7 @@ export class Web3Client {
       ) {
         // 如果提供了函数签名，直接使用完整 ABI（viem 会自动处理重载）
         if (options.functionSignature) {
-          parsedAbi = abiSource as unknown as Abi;
+          parsedAbi = asViemAbi(abiSource);
         } else {
           // 尝试根据参数数量匹配函数重载
           const argsCount = options.args?.length || 0;
@@ -827,11 +833,9 @@ export class Web3Client {
           );
 
           if (matchedFunction) {
-            // 如果找到匹配的函数，只使用该函数构建 ABI
-            parsedAbi = [matchedFunction] as unknown as Abi;
+            parsedAbi = asViemAbi([matchedFunction]);
           } else {
-            // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
-            parsedAbi = abiSource as unknown as Abi;
+            parsedAbi = asViemAbi(abiSource);
           }
         }
       } // 如果提供了 returnType 且是 tuple 类型，构建 ABI
@@ -882,7 +886,7 @@ export class Web3Client {
         address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: formattedArgs as any,
+        args: (formattedArgs ?? undefined) as readonly unknown[] | undefined,
         account: options.from as Address | undefined,
       });
 
@@ -1819,8 +1823,7 @@ export class Web3Client {
       } else {
         // 尝试从客户端获取链信息
         try {
-          // viem 的 PublicClient 可能包含 chain 信息
-          const chain = (client as any).chain;
+          const chain = (client as ClientWithOptionalChain).chain;
           if (chain && chain.name) {
             name = chain.name;
             this.chain = chain;

@@ -24,6 +24,7 @@ import {
   createWalletClient,
   custom,
   getAddress,
+  type Hash,
   type Hex,
   parseAbi,
   type PublicClient,
@@ -32,6 +33,7 @@ import {
 } from "viem";
 // 内部工具（不对外 re-export）
 import {
+  asViemAbi,
   findMatchingFunction,
   formatAddressArgs,
   getErrorMessage,
@@ -129,6 +131,9 @@ export interface ContractReadOptions {
   /** 完整 ABI（可选），如果提供则优先使用，如果未提供则使用配置中的 abi */
   abi?: string[] | Array<Record<string, unknown>> | Abi;
 }
+
+/** viem 的 PublicClient / WalletClient 在运行时可能带有 chain，类型上未必导出；用于替代 (client as any).chain，比 as any 更安全 */
+type ClientWithOptionalChain = { chain?: Chain };
 
 /**
  * 客户端 Web3 操作类
@@ -233,7 +238,7 @@ export class Web3Client {
       if (!chain) {
         try {
           const publicClient = this.getPublicClient();
-          chain = (publicClient as any).chain;
+          chain = (publicClient as ClientWithOptionalChain).chain;
           if (chain) {
             this.chain = chain;
           }
@@ -247,9 +252,9 @@ export class Web3Client {
         transport: custom(win.ethereum),
       });
 
-      // 如果 walletClient 有 chain 属性，保存它
-      if ((this.walletClient as any).chain && !this.chain) {
-        this.chain = (this.walletClient as any).chain;
+      const wc = this.walletClient as ClientWithOptionalChain;
+      if (wc.chain && !this.chain) {
+        this.chain = wc.chain;
       }
 
       return this.walletClient;
@@ -339,9 +344,7 @@ export class Web3Client {
             argsCount,
             true, // readContract 使用 view/pure
           );
-          parsedAbi = matched
-            ? ([matched] as unknown as Abi)
-            : (abiSource as unknown as Abi);
+          parsedAbi = matched ? asViemAbi([matched]) : asViemAbi(abiSource);
         }
       } else {
         throw new Error("请提供合约 ABI");
@@ -354,7 +357,7 @@ export class Web3Client {
         address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: formattedArgs as any,
+        args: (formattedArgs ?? undefined) as readonly unknown[] | undefined,
       });
 
       return result;
@@ -412,11 +415,9 @@ export class Web3Client {
         );
 
         if (matchedFunction) {
-          // 如果找到匹配的函数，只使用该函数构建 ABI
-          parsedAbi = [matchedFunction] as unknown as Abi;
+          parsedAbi = asViemAbi([matchedFunction]);
         } else {
-          // 如果没有找到匹配的函数，使用完整 ABI（让 viem 处理）
-          parsedAbi = abiSource as unknown as Abi;
+          parsedAbi = asViemAbi(abiSource);
         }
       } // 如果提供了字符串数组格式的 ABI
       else if (
@@ -425,7 +426,6 @@ export class Web3Client {
         abiSource.length > 0 &&
         typeof abiSource[0] === "string"
       ) {
-        // 字符串数组格式的 ABI
         parsedAbi = parseAbi(abiSource as string[]);
       } else {
         throw new Error("请提供合约 ABI");
@@ -434,9 +434,10 @@ export class Web3Client {
       const formattedAddress = getAddress(contractAddress) as Address;
       const formattedArgs = formatAddressArgs(options.args) ?? options.args;
 
-      // 获取 chain
-      let chain: Chain | undefined = (walletClient as any).chain ||
-        this.chain || undefined;
+      let chain: Chain | undefined =
+        (walletClient as ClientWithOptionalChain).chain ??
+        this.chain ??
+        undefined;
 
       // 如果还是没有 chain，尝试从 PublicClient 获取
       if (!chain) {
@@ -457,7 +458,7 @@ export class Web3Client {
         address: formattedAddress,
         abi: parsedAbi,
         functionName: options.functionName,
-        args: formattedArgs as any,
+        args: (formattedArgs ?? undefined) as readonly unknown[] | undefined,
         value: options.value ? BigInt(options.value.toString()) : undefined,
         gas: options.gasLimit ? BigInt(options.gasLimit.toString()) : undefined,
         chain: chain,
@@ -472,7 +473,7 @@ export class Web3Client {
       const client = this.getPublicClient();
       try {
         const receipt = await client.waitForTransactionReceipt({
-          hash: hash as any,
+          hash: hash as Hash,
           confirmations: 1,
         });
         return receipt;
@@ -669,7 +670,7 @@ export class Web3Client {
         name = this.chain.name;
       } else {
         try {
-          const chain = (client as any).chain;
+          const chain = (client as ClientWithOptionalChain).chain;
           if (chain && chain.name) {
             name = chain.name;
             this.chain = chain;

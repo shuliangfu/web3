@@ -35,6 +35,15 @@ export function getErrorMessage(err: unknown): string {
 }
 
 /**
+ * 将 ABI  shaped 的值断言为 viem 的 Abi 类型（边界处集中断言，避免业务逻辑中多处 as unknown as Abi）
+ * @param v 已解析或可传给 viem 的 ABI 值（如 [matched]、abiSource、parseAbi 结果等）
+ * @returns viem Abi 类型
+ */
+export function asViemAbi<T>(v: T): Abi {
+  return v as unknown as Abi;
+}
+
+/**
  * 格式化 args 中形如以太坊地址的参数为校验和格式（viem 要求）
  * @param args 参数数组
  * @returns 格式化后的数组；若无需格式化或 args 为空，返回原数组或 undefined
