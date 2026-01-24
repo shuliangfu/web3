@@ -75,6 +75,21 @@ export class ContractProxy {
   }
 
   /**
+   * 读取合约的公有属性（便捷方法）
+   * Solidity 的公有状态变量会自动生成 getter 函数，此方法用于调用这些 getter
+   * @param propertyName 属性名（对应 Solidity 中的公有状态变量名）
+   * @returns 属性值
+   * 
+   * @example
+   * // 假设合约有：uint256 public totalSupply;
+   * const totalSupply = await contract.readProperty('totalSupply');
+   */
+  async readProperty(propertyName: string): Promise<unknown> {
+    // 公有属性的 getter 函数名就是属性名本身，无参数
+    return await this.readContract(propertyName);
+  }
+
+  /**
    * 调用合约方法（写入操作）
    * @param functionName 函数名
    * @param args 函数参数（可选）

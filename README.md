@@ -4,7 +4,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-116%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-118%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -51,6 +51,7 @@ bunx jsr add @dreamer/web3
   - 交易查询和状态检查
 - **合约交互**：
   - 读取合约数据（只读方法）
+  - 读取合约公有属性（便捷方法 `readProperty`）
   - 调用合约方法（需要私钥签名）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
@@ -155,6 +156,17 @@ const web3 = new Web3Client({
 // 通过合约名称访问
 const balance = await web3.contracts.USDT.readContract("balanceOf", ["0x..."]);
 await web3.contracts.USDT.callContract("transfer", ["0x...", "1000000"]);
+
+// 读取合约公有属性（便捷方法）
+// Solidity 的公有状态变量会自动生成 getter 函数
+// 例如：uint256 public totalSupply; 会自动生成 function totalSupply() view returns (uint256)
+const totalSupply = await web3.contracts.USDT.readProperty("totalSupply");
+console.log("总供应量:", totalSupply);
+
+// readProperty 等价于 readContract，但更简洁
+const decimals1 = await web3.contracts.USDT.readProperty("decimals");
+const decimals2 = await web3.contracts.USDT.readContract("decimals");
+// decimals1 === decimals2
 ```
 
 ### 交易查询
@@ -392,6 +404,7 @@ const contractAddress = computeContractAddress(
 
 - `contracts[合约名称]`: 通过合约名称访问合约代理
   - `readContract(functionName, args?)`: 读取合约数据
+  - `readProperty(propertyName)`: 读取合约公有属性（便捷方法，等价于调用无参数的 getter 函数）
   - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
   - `address`: 获取合约地址
   - `abi`: 获取合约 ABI

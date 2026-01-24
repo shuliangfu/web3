@@ -578,6 +578,190 @@ describe("客户端 Web3Client", () => {
         console.log("客户端合约代理 readContract 2 参数测试:", errorMessage);
       }
     });
+
+    it("应该通过 readProperty 读取合约公有属性", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过 readProperty 测试");
+        return;
+      }
+
+      const clientWithContract = new Web3Client({
+        contracts: {
+          name: "USDT",
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          abi: [
+            {
+              type: "function",
+              name: "_decimals",
+              inputs: [],
+              outputs: [{ name: "", type: "uint8" }],
+              stateMutability: "view",
+            },
+            {
+              type: "function",
+              name: "_name",
+              inputs: [],
+              outputs: [{ name: "", type: "string" }],
+              stateMutability: "view",
+            },
+            {
+              type: "function",
+              name: "_owner",
+              inputs: [],
+              outputs: [{ name: "", type: "address" }],
+              stateMutability: "view",
+            },
+          ] as any,
+        },
+      });
+      await clientWithContract.connectWallet();
+
+      // 测试读取类似公有属性的 getter 函数（无参数）
+      try {
+        // 测试读取 _decimals（类似 uint8 public decimals）
+        const decimals = await clientWithContract.contracts.USDT.readProperty("_decimals");
+        expect(decimals).toBeDefined();
+        expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+        console.log("客户端 USDT decimals:", decimals);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readProperty _decimals 测试:", errorMessage);
+      }
+
+      try {
+        // 测试读取 _name（类似 string public name）
+        const name = await clientWithContract.contracts.USDT.readProperty("_name");
+        expect(name).toBeDefined();
+        expect(typeof name).toBe("string");
+        console.log("客户端 USDT name:", name);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readProperty _name 测试:", errorMessage);
+      }
+
+      try {
+        // 测试读取 _owner（类似 address public owner）
+        const owner = await clientWithContract.contracts.USDT.readProperty("_owner");
+        expect(owner).toBeDefined();
+        expect(typeof owner === "string").toBeTruthy();
+        if (typeof owner === "string") {
+          expect(owner.startsWith("0x")).toBeTruthy();
+        }
+        console.log("客户端 USDT owner:", owner);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readProperty _owner 测试:", errorMessage);
+      }
+
+      // 测试 readProperty 与 readContract 等价性
+      try {
+        const decimals1 = await clientWithContract.contracts.USDT.readProperty("_decimals");
+        const decimals2 = await clientWithContract.contracts.USDT.readContract("_decimals");
+        expect(decimals1).toEqual(decimals2);
+        console.log("客户端 readProperty 与 readContract 结果一致:", decimals1);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readProperty 与 readContract 等价性测试:", errorMessage);
+      }
+    });
+
+    it("应该通过 readContract 读取合约公有属性", async () => {
+      const accounts = await client.getAccounts();
+      if (accounts.length === 0) {
+        console.warn("没有连接的账户，跳过 readContract 读取属性测试");
+        return;
+      }
+
+      const clientWithContract = new Web3Client({
+        contracts: {
+          name: "USDT",
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          abi: [
+            {
+              type: "function",
+              name: "_decimals",
+              inputs: [],
+              outputs: [{ name: "", type: "uint8" }],
+              stateMutability: "view",
+            },
+            {
+              type: "function",
+              name: "_name",
+              inputs: [],
+              outputs: [{ name: "", type: "string" }],
+              stateMutability: "view",
+            },
+            {
+              type: "function",
+              name: "_owner",
+              inputs: [],
+              outputs: [{ name: "", type: "address" }],
+              stateMutability: "view",
+            },
+          ] as any,
+        },
+      });
+      await clientWithContract.connectWallet();
+
+      // 测试使用 readContract 读取类似公有属性的 getter 函数（无参数）
+      try {
+        // 测试读取 _decimals（类似 uint8 public decimals）
+        const decimals = await clientWithContract.contracts.USDT.readContract("_decimals");
+        expect(decimals).toBeDefined();
+        expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+        console.log("客户端 readContract 读取 USDT decimals:", decimals);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract _decimals 测试:", errorMessage);
+      }
+
+      try {
+        // 测试读取 _name（类似 string public name）
+        const name = await clientWithContract.contracts.USDT.readContract("_name");
+        expect(name).toBeDefined();
+        expect(typeof name).toBe("string");
+        console.log("客户端 readContract 读取 USDT name:", name);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract _name 测试:", errorMessage);
+      }
+
+      try {
+        // 测试读取 _owner（类似 address public owner）
+        const owner = await clientWithContract.contracts.USDT.readContract("_owner");
+        expect(owner).toBeDefined();
+        expect(typeof owner === "string").toBeTruthy();
+        if (typeof owner === "string") {
+          expect(owner.startsWith("0x")).toBeTruthy();
+        }
+        console.log("客户端 readContract 读取 USDT owner:", owner);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract _owner 测试:", errorMessage);
+      }
+
+      // 对比 readContract 和 readProperty 的结果
+      try {
+        const decimalsByReadContract = await clientWithContract.contracts.USDT.readContract("_decimals");
+        const decimalsByReadProperty = await clientWithContract.contracts.USDT.readProperty("_decimals");
+        expect(decimalsByReadContract).toEqual(decimalsByReadProperty);
+        console.log("客户端 readContract 和 readProperty 读取 decimals 结果一致:", decimalsByReadContract);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract 和 readProperty 对比测试:", errorMessage);
+      }
+
+      try {
+        const nameByReadContract = await clientWithContract.contracts.USDT.readContract("_name");
+        const nameByReadProperty = await clientWithContract.contracts.USDT.readProperty("_name");
+        expect(nameByReadContract).toEqual(nameByReadProperty);
+        console.log("客户端 readContract 和 readProperty 读取 name 结果一致:", nameByReadContract);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log("客户端 readContract 和 readProperty 对比 name 测试:", errorMessage);
+      }
+    });
   });
 
   describe("钱包事件监听", () => {
