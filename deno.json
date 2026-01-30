@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.6-beta.7",
+  "version": "1.0.6-beta.8",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
@@ -37,6 +37,7 @@
   },
   "imports": {
     "viem": "npm:viem@^2.43.5",
-    "@dreamer/test": "jsr:@dreamer/test@1.0.0-beta.22"
+    "@dreamer/service": "jsr:@dreamer/service@^1.0.0-beta.4",
+    "@dreamer/test": "jsr:@dreamer/test@^1.0.0-beta.39"
   }
 }

@@ -184,7 +184,9 @@ export function fromWei(
 
   // 移除小数部分末尾的零
   let decimalPart = remainderStr;
-  while (decimalPart.length > 0 && decimalPart[decimalPart.length - 1] === "0") {
+  while (
+    decimalPart.length > 0 && decimalPart[decimalPart.length - 1] === "0"
+  ) {
     decimalPart = decimalPart.slice(0, -1);
   }
 

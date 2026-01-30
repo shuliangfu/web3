@@ -436,8 +436,8 @@ export class Web3Client {
 
       let chain: Chain | undefined =
         (walletClient as ClientWithOptionalChain).chain ??
-        this.chain ??
-        undefined;
+          this.chain ??
+          undefined;
 
       // 如果还是没有 chain，尝试从 PublicClient 获取
       if (!chain) {

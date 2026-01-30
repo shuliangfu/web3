@@ -3,8 +3,8 @@
 > 服务端 Web3 操作辅助库，兼容 Deno 和 Bun 运行时，支持 RPC 调用和合约交互
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-118%20passed-brightgreen)](./TEST_REPORT.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+[![Tests](https://img.shields.io/badge/tests-138%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -32,13 +32,13 @@ bunx jsr add @dreamer/web3
 
 ## 🌍 环境兼容性
 
-| 环境 | 版本要求 | 状态 |
-|------|---------|------|
-| **Deno** | 2.6+ | ✅ 完全支持 |
-| **Bun** | 1.3.5+ | ✅ 完全支持 |
-| **服务端** | - | ✅ 支持（兼容 Deno 和 Bun 运行时，通过 RPC URL 连接区块链网络） |
-| **客户端** | - | ✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client` 使用钱包连接） |
-| **依赖** | - | 📦 需要 `npm:viem@^2.43.3` |
+| 环境       | 版本要求 | 状态                                                                |
+| ---------- | -------- | ------------------------------------------------------------------- |
+| **Deno**   | 2.6+     | ✅ 完全支持                                                         |
+| **Bun**    | 1.3.5+   | ✅ 完全支持                                                         |
+| **服务端** | -        | ✅ 支持（兼容 Deno 和 Bun 运行时，通过 RPC URL 连接区块链网络）     |
+| **客户端** | -        | ✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client` 使用钱包连接） |
+| **依赖**   | -        | 📦 需要 `npm:viem@^2.43.3`                                          |
 
 ---
 
@@ -70,6 +70,10 @@ bunx jsr add @dreamer/web3
   - 哈希工具（Keccak-256）
   - 十六进制工具
   - 合约工具（函数选择器、编码等）
+- **服务容器集成**：
+  - 支持 `@dreamer/service` 依赖注入
+  - Web3Manager 管理多个 Web3 客户端
+  - 提供 `createWeb3Manager` 工厂函数
 
 ---
 
@@ -404,7 +408,8 @@ const contractAddress = computeContractAddress(
 
 - `contracts[合约名称]`: 通过合约名称访问合约代理
   - `readContract(functionName, args?)`: 读取合约数据
-  - `readProperty(propertyName)`: 读取合约公有属性（便捷方法，等价于调用无参数的 getter 函数）
+  - `readProperty(propertyName)`: 读取合约公有属性（便捷方法，等价于调用无参数的
+    getter 函数）
   - `callContract(functionName, args?, waitForConfirmation?)`: 调用合约方法
   - `address`: 获取合约地址
   - `abi`: 获取合约 ABI
@@ -473,29 +478,79 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/mod";
 
 ## 📊 测试报告
 
-本库经过全面测试，所有 116 个测试用例均已通过，测试覆盖率达到 100%。详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
+本库经过全面测试，所有 138 个测试用例均已通过，测试覆盖率达到
+100%。详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
-**测试统计**：
-- **总测试数**: 116 (Deno)
-- **通过**: 116 ✅
-- **失败**: 0
-- **通过率**: 100% ✅
-- **测试执行时间**: ~10 秒 (Deno)
-- **测试覆盖**: 所有公共 API、边界情况、错误处理
-- **测试环境**: Deno 2.6.5, Anvil 本地测试网络 (Chain ID: 31337)
+| 项目         | 详情   |
+| ------------ | ------ |
+| **总测试数** | 138    |
+| **通过**     | 138 ✅ |
+| **失败**     | 0      |
+| **通过率**   | 100%   |
 
-**测试类型**：
-- ✅ 单元测试（32 个）
-- ✅ 集成测试（59 个）
-- ✅ 客户端测试（25 个）
-
-**测试亮点**：
-- ✅ 所有功能、边界情况、错误处理都有完整的测试覆盖
-- ✅ 集成测试验证了端到端的完整流程
-- ✅ 本地区块链网络测试（Anvil）
-- ✅ 服务端和客户端双版本测试覆盖
+| 测试模块                   | 测试数量 | 状态    |
+| -------------------------- | -------- | ------- |
+| Web3Client                 | 61       | ✅ 完成 |
+| Web3Manager                | 11       | ✅ 完成 |
+| ServiceContainer 集成      | 4        | ✅ 完成 |
+| createWeb3Manager 工厂函数 | 5        | ✅ 完成 |
+| 客户端测试                 | 27       | ✅ 完成 |
+| 工具函数测试               | 30       | ✅ 完成 |
 
 查看完整测试报告：[TEST_REPORT.md](./TEST_REPORT.md)
+
+---
+
+## 🔗 ServiceContainer 集成
+
+### 使用 createWeb3Manager 工厂函数
+
+```typescript
+import { ServiceContainer } from "@dreamer/service";
+import { createWeb3Manager, Web3Manager } from "@dreamer/web3";
+
+// 创建服务容器
+const container = new ServiceContainer();
+
+// 注册 Web3Manager
+container.registerSingleton(
+  "web3:main",
+  () => createWeb3Manager({ name: "main" }),
+);
+
+// 获取 Web3Manager
+const manager = container.get<Web3Manager>("web3:main");
+
+// 注册多链配置
+manager.registerClient("ethereum", {
+  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  chainId: 1,
+});
+
+manager.registerClient("polygon", {
+  rpcUrl: "https://polygon-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  chainId: 137,
+});
+
+// 获取客户端并使用
+const ethClient = manager.getClient("ethereum");
+const balance = await ethClient.getBalance("0x...");
+```
+
+### Web3Manager API
+
+| 方法                              | 说明                   |
+| --------------------------------- | ---------------------- |
+| `getName()`                       | 获取管理器名称         |
+| `setContainer(container)`         | 设置服务容器           |
+| `getContainer()`                  | 获取服务容器           |
+| `fromContainer(container, name?)` | 从服务容器获取实例     |
+| `registerClient(name, config)`    | 注册 Web3 客户端配置   |
+| `getClient(name)`                 | 获取或创建 Web3 客户端 |
+| `hasClient(name)`                 | 检查客户端是否存在     |
+| `removeClient(name)`              | 移除客户端             |
+| `getClientNames()`                | 获取所有客户端名称     |
+| `close()`                         | 关闭所有客户端         |
 
 ---
 

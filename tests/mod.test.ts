@@ -3,7 +3,13 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "@dreamer/test";
-import { createWeb3Client, Web3Client } from "../src/mod.ts";
+import { ServiceContainer } from "@dreamer/service";
+import {
+  createWeb3Client,
+  createWeb3Manager,
+  Web3Client,
+  Web3Manager,
+} from "../src/mod.ts";
 import { formatAddress, isAddress } from "../src/utils.ts";
 import usdtAbi from "./data/abi/USDT.json" with { type: "json" };
 import config from "./data/config.ts";
@@ -633,7 +639,9 @@ describe("Web3", () => {
         } catch (error) {
           // 如果合约不存在或方法不存在，这是预期的（因为我们使用的是测试 ABI）
           // 但重要的是确保函数匹配逻辑正确
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           // 如果错误是"函数不存在"或"合约不存在"，说明匹配逻辑可能有问题
           // 如果错误是"执行 revert"或其他合约相关错误，说明匹配成功了
           console.log("readContract 1 参数测试:", errorMessage);
@@ -656,7 +664,9 @@ describe("Web3", () => {
           });
           expect(result2).toBeDefined();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract 2 参数测试:", errorMessage);
         }
       });
@@ -678,7 +688,9 @@ describe("Web3", () => {
           });
           expect(result).toBeDefined();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract pure 函数测试:", errorMessage);
         }
       });
@@ -706,7 +718,9 @@ describe("Web3", () => {
           expect(typeof result1 === "string").toBeTruthy();
         } catch (error) {
           // 如果合约不存在或方法不存在，这是预期的
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("callContract 1 参数测试:", errorMessage);
         }
       });
@@ -732,7 +746,9 @@ describe("Web3", () => {
           expect(result2).toBeDefined();
           expect(typeof result2 === "string").toBeTruthy();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("callContract 2 参数测试:", errorMessage);
         }
       });
@@ -758,7 +774,9 @@ describe("Web3", () => {
           expect(result).toBeDefined();
           expect(typeof result === "string").toBeTruthy();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("callContract payable 函数测试:", errorMessage);
         }
       });
@@ -783,7 +801,9 @@ describe("Web3", () => {
           );
           expect(result1).toBeDefined();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("合约代理 readContract 1 参数测试:", errorMessage);
         }
 
@@ -795,7 +815,9 @@ describe("Web3", () => {
           );
           expect(result2).toBeDefined();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("合约代理 readContract 2 参数测试:", errorMessage);
         }
       });
@@ -815,12 +837,17 @@ describe("Web3", () => {
         // USDT 合约中有 _decimals, _name, _owner 等类似公有属性的 getter
         try {
           // 测试读取 _decimals（类似 uint8 public decimals）
-          const decimals = await client.contracts.USDT.readProperty("_decimals");
+          const decimals = await client.contracts.USDT.readProperty(
+            "_decimals",
+          );
           expect(decimals).toBeDefined();
-          expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+          expect(typeof decimals === "number" || typeof decimals === "bigint")
+            .toBeTruthy();
           console.log("USDT decimals:", decimals);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readProperty _decimals 测试:", errorMessage);
         }
 
@@ -831,7 +858,9 @@ describe("Web3", () => {
           expect(typeof name).toBe("string");
           console.log("USDT name:", name);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readProperty _name 测试:", errorMessage);
         }
 
@@ -845,18 +874,26 @@ describe("Web3", () => {
           }
           console.log("USDT owner:", owner);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readProperty _owner 测试:", errorMessage);
         }
 
         // 测试 readProperty 与 readContract 等价性
         try {
-          const decimals1 = await client.contracts.USDT.readProperty("_decimals");
-          const decimals2 = await client.contracts.USDT.readContract("_decimals");
+          const decimals1 = await client.contracts.USDT.readProperty(
+            "_decimals",
+          );
+          const decimals2 = await client.contracts.USDT.readContract(
+            "_decimals",
+          );
           expect(decimals1).toEqual(decimals2);
           console.log("readProperty 与 readContract 结果一致:", decimals1);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readProperty 与 readContract 等价性测试:", errorMessage);
         }
       });
@@ -876,12 +913,17 @@ describe("Web3", () => {
         // USDT 合约中有 _decimals, _name, _owner 等类似公有属性的 getter
         try {
           // 测试读取 _decimals（类似 uint8 public decimals）
-          const decimals = await client.contracts.USDT.readContract("_decimals");
+          const decimals = await client.contracts.USDT.readContract(
+            "_decimals",
+          );
           expect(decimals).toBeDefined();
-          expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+          expect(typeof decimals === "number" || typeof decimals === "bigint")
+            .toBeTruthy();
           console.log("readContract 读取 USDT decimals:", decimals);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract _decimals 测试:", errorMessage);
         }
 
@@ -892,7 +934,9 @@ describe("Web3", () => {
           expect(typeof name).toBe("string");
           console.log("readContract 读取 USDT name:", name);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract _name 测试:", errorMessage);
         }
 
@@ -906,29 +950,50 @@ describe("Web3", () => {
           }
           console.log("readContract 读取 USDT owner:", owner);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract _owner 测试:", errorMessage);
         }
 
         // 对比 readContract 和 readProperty 的结果
         try {
-          const decimalsByReadContract = await client.contracts.USDT.readContract("_decimals");
-          const decimalsByReadProperty = await client.contracts.USDT.readProperty("_decimals");
+          const decimalsByReadContract = await client.contracts.USDT
+            .readContract("_decimals");
+          const decimalsByReadProperty = await client.contracts.USDT
+            .readProperty("_decimals");
           expect(decimalsByReadContract).toEqual(decimalsByReadProperty);
-          console.log("readContract 和 readProperty 读取 decimals 结果一致:", decimalsByReadContract);
+          console.log(
+            "readContract 和 readProperty 读取 decimals 结果一致:",
+            decimalsByReadContract,
+          );
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           console.log("readContract 和 readProperty 对比测试:", errorMessage);
         }
 
         try {
-          const nameByReadContract = await client.contracts.USDT.readContract("_name");
-          const nameByReadProperty = await client.contracts.USDT.readProperty("_name");
+          const nameByReadContract = await client.contracts.USDT.readContract(
+            "_name",
+          );
+          const nameByReadProperty = await client.contracts.USDT.readProperty(
+            "_name",
+          );
           expect(nameByReadContract).toEqual(nameByReadProperty);
-          console.log("readContract 和 readProperty 读取 name 结果一致:", nameByReadContract);
+          console.log(
+            "readContract 和 readProperty 读取 name 结果一致:",
+            nameByReadContract,
+          );
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.log("readContract 和 readProperty 对比 name 测试:", errorMessage);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
+          console.log(
+            "readContract 和 readProperty 对比 name 测试:",
+            errorMessage,
+          );
         }
       });
     });
@@ -999,7 +1064,9 @@ describe("Web3", () => {
           console.log("发送方 USDT 余额:", senderBalance.toString());
         } catch (error) {
           // 如果是本地网络，合约可能不存在或余额为 0，这是正常的
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error
+            ? error.message
+            : String(error);
           if (
             errorMessage.includes("returned no data") ||
             errorMessage.includes("revert") ||
@@ -1388,5 +1455,209 @@ describe("Web3", () => {
         }
       }, { timeout: 15000, sanitizeOps: false, sanitizeResources: false });
     });
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+describe("Web3Manager", () => {
+  it("应该创建 Web3Manager 实例", () => {
+    const manager = new Web3Manager();
+    expect(manager).toBeInstanceOf(Web3Manager);
+  });
+
+  it("应该获取默认管理器名称", () => {
+    const manager = new Web3Manager();
+    expect(manager.getName()).toBe("default");
+  });
+
+  it("应该获取自定义管理器名称", () => {
+    const manager = new Web3Manager({ name: "custom" });
+    expect(manager.getName()).toBe("custom");
+  });
+
+  it("应该注册和获取 Web3 客户端", async () => {
+    const manager = new Web3Manager();
+    manager.registerClient("ethereum", {
+      rpcUrl: config.host,
+      chainId: config.chainId,
+    });
+
+    const client = manager.getClient("ethereum");
+    expect(client).toBeInstanceOf(Web3Client);
+
+    await manager.close();
+  });
+
+  it("应该返回同一个客户端实例", async () => {
+    const manager = new Web3Manager();
+    manager.registerClient("ethereum", {
+      rpcUrl: config.host,
+      chainId: config.chainId,
+    });
+
+    const client1 = manager.getClient("ethereum");
+    const client2 = manager.getClient("ethereum");
+    expect(client1).toBe(client2);
+
+    await manager.close();
+  });
+
+  it("应该在未注册配置时抛出错误", () => {
+    const manager = new Web3Manager();
+    expect(() => manager.getClient("unknown")).toThrow(
+      '未找到名为 "unknown" 的 Web3 配置',
+    );
+  });
+
+  it("应该使用默认配置创建客户端", async () => {
+    const manager = new Web3Manager({
+      defaultConfig: {
+        rpcUrl: config.host,
+        chainId: config.chainId,
+      },
+    });
+
+    const client = manager.getClient("any");
+    expect(client).toBeInstanceOf(Web3Client);
+
+    await manager.close();
+  });
+
+  it("应该检查客户端是否存在", () => {
+    const manager = new Web3Manager();
+
+    expect(manager.hasClient("ethereum")).toBe(false);
+
+    manager.registerClient("ethereum", {
+      rpcUrl: config.host,
+    });
+
+    expect(manager.hasClient("ethereum")).toBe(true);
+  });
+
+  it("应该移除客户端", async () => {
+    const manager = new Web3Manager();
+    manager.registerClient("ethereum", {
+      rpcUrl: config.host,
+    });
+
+    manager.getClient("ethereum"); // 创建实例
+    expect(manager.hasClient("ethereum")).toBe(true);
+
+    await manager.removeClient("ethereum");
+    expect(manager.hasClient("ethereum")).toBe(false);
+  });
+
+  it("应该获取所有客户端名称", () => {
+    const manager = new Web3Manager();
+    manager.registerClient("ethereum", { rpcUrl: "https://eth.example.com" });
+    manager.registerClient("polygon", {
+      rpcUrl: "https://polygon.example.com",
+    });
+
+    const names = manager.getClientNames();
+    expect(names).toContain("ethereum");
+    expect(names).toContain("polygon");
+  });
+
+  it("应该关闭所有客户端", async () => {
+    const manager = new Web3Manager();
+    manager.registerClient("ethereum", { rpcUrl: config.host });
+    manager.getClient("ethereum");
+
+    await manager.close();
+    expect(manager.getClientNames()).toContain("ethereum"); // 配置仍在
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+describe("Web3Manager ServiceContainer 集成", () => {
+  it("应该设置和获取服务容器", () => {
+    const manager = new Web3Manager();
+    const container = new ServiceContainer();
+
+    expect(manager.getContainer()).toBeUndefined();
+
+    manager.setContainer(container);
+    expect(manager.getContainer()).toBe(container);
+  });
+
+  it("应该从服务容器获取 Web3Manager", () => {
+    const container = new ServiceContainer();
+    const manager = new Web3Manager({ name: "test" });
+    manager.setContainer(container);
+
+    container.registerSingleton("web3:test", () => manager);
+
+    const retrieved = Web3Manager.fromContainer(container, "test");
+    expect(retrieved).toBe(manager);
+  });
+
+  it("应该在服务不存在时返回 undefined", () => {
+    const container = new ServiceContainer();
+    const retrieved = Web3Manager.fromContainer(container, "non-existent");
+    expect(retrieved).toBeUndefined();
+  });
+
+  it("应该支持多个 Web3Manager 实例", () => {
+    const container = new ServiceContainer();
+
+    const mainnetManager = new Web3Manager({ name: "mainnet" });
+    mainnetManager.setContainer(container);
+
+    const testnetManager = new Web3Manager({ name: "testnet" });
+    testnetManager.setContainer(container);
+
+    container.registerSingleton("web3:mainnet", () => mainnetManager);
+    container.registerSingleton("web3:testnet", () => testnetManager);
+
+    expect(Web3Manager.fromContainer(container, "mainnet")).toBe(
+      mainnetManager,
+    );
+    expect(Web3Manager.fromContainer(container, "testnet")).toBe(
+      testnetManager,
+    );
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+describe("createWeb3Manager 工厂函数", () => {
+  it("应该创建 Web3Manager 实例", () => {
+    const manager = createWeb3Manager();
+    expect(manager).toBeInstanceOf(Web3Manager);
+  });
+
+  it("应该使用默认名称", () => {
+    const manager = createWeb3Manager();
+    expect(manager.getName()).toBe("default");
+  });
+
+  it("应该使用自定义名称", () => {
+    const manager = createWeb3Manager({ name: "custom" });
+    expect(manager.getName()).toBe("custom");
+  });
+
+  it("应该能够在服务容器中注册", () => {
+    const container = new ServiceContainer();
+
+    container.registerSingleton(
+      "web3:main",
+      () => createWeb3Manager({ name: "main" }),
+    );
+
+    const manager = container.get<Web3Manager>("web3:main");
+    expect(manager).toBeInstanceOf(Web3Manager);
+    expect(manager.getName()).toBe("main");
+  });
+
+  it("应该支持默认配置", async () => {
+    const manager = createWeb3Manager({
+      defaultConfig: {
+        rpcUrl: config.host,
+        chainId: config.chainId,
+      },
+    });
+
+    const client = manager.getClient("any-name");
+    expect(client).toBeInstanceOf(Web3Client);
+
+    await manager.close();
   });
 }, { sanitizeOps: false, sanitizeResources: false });

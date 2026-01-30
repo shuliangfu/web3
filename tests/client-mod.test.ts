@@ -407,7 +407,9 @@ describe("客户端 Web3Client", () => {
       } catch (error) {
         // 如果合约不存在或方法不存在，这是预期的（因为我们使用的是测试 ABI）
         // 但重要的是确保函数匹配逻辑正确
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract 1 参数测试:", errorMessage);
       }
     });
@@ -429,7 +431,9 @@ describe("客户端 Web3Client", () => {
         });
         expect(result2).toBeDefined();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract 2 参数测试:", errorMessage);
       }
     });
@@ -452,7 +456,9 @@ describe("客户端 Web3Client", () => {
         });
         expect(result).toBeDefined();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract pure 函数测试:", errorMessage);
       }
     });
@@ -480,7 +486,9 @@ describe("客户端 Web3Client", () => {
         expect(typeof result1 === "string").toBeTruthy();
       } catch (error) {
         // 如果合约不存在或方法不存在，这是预期的
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 callContract 1 参数测试:", errorMessage);
       }
     });
@@ -506,7 +514,9 @@ describe("客户端 Web3Client", () => {
         expect(result2).toBeDefined();
         expect(typeof result2 === "string").toBeTruthy();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 callContract 2 参数测试:", errorMessage);
       }
     });
@@ -532,7 +542,9 @@ describe("客户端 Web3Client", () => {
         expect(result).toBeDefined();
         expect(typeof result === "string").toBeTruthy();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 callContract payable 函数测试:", errorMessage);
       }
     });
@@ -556,25 +568,31 @@ describe("客户端 Web3Client", () => {
       // 测试通过合约代理调用重载函数
       try {
         // 调用 register(pid) - 1 个参数
-        const result1 = await clientWithContract.contracts.TestContract.readContract(
-          "register",
-          [100],
-        );
+        const result1 = await clientWithContract.contracts.TestContract
+          .readContract(
+            "register",
+            [100],
+          );
         expect(result1).toBeDefined();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端合约代理 readContract 1 参数测试:", errorMessage);
       }
 
       try {
         // 调用 register(uid, pid) - 2 个参数
-        const result2 = await clientWithContract.contracts.TestContract.readContract(
-          "register",
-          [1, 100],
-        );
+        const result2 = await clientWithContract.contracts.TestContract
+          .readContract(
+            "register",
+            [1, 100],
+          );
         expect(result2).toBeDefined();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端合约代理 readContract 2 参数测试:", errorMessage);
       }
     });
@@ -620,29 +638,40 @@ describe("客户端 Web3Client", () => {
       // 测试读取类似公有属性的 getter 函数（无参数）
       try {
         // 测试读取 _decimals（类似 uint8 public decimals）
-        const decimals = await clientWithContract.contracts.USDT.readProperty("_decimals");
+        const decimals = await clientWithContract.contracts.USDT.readProperty(
+          "_decimals",
+        );
         expect(decimals).toBeDefined();
-        expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+        expect(typeof decimals === "number" || typeof decimals === "bigint")
+          .toBeTruthy();
         console.log("客户端 USDT decimals:", decimals);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readProperty _decimals 测试:", errorMessage);
       }
 
       try {
         // 测试读取 _name（类似 string public name）
-        const name = await clientWithContract.contracts.USDT.readProperty("_name");
+        const name = await clientWithContract.contracts.USDT.readProperty(
+          "_name",
+        );
         expect(name).toBeDefined();
         expect(typeof name).toBe("string");
         console.log("客户端 USDT name:", name);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readProperty _name 测试:", errorMessage);
       }
 
       try {
         // 测试读取 _owner（类似 address public owner）
-        const owner = await clientWithContract.contracts.USDT.readProperty("_owner");
+        const owner = await clientWithContract.contracts.USDT.readProperty(
+          "_owner",
+        );
         expect(owner).toBeDefined();
         expect(typeof owner === "string").toBeTruthy();
         if (typeof owner === "string") {
@@ -650,19 +679,30 @@ describe("客户端 Web3Client", () => {
         }
         console.log("客户端 USDT owner:", owner);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readProperty _owner 测试:", errorMessage);
       }
 
       // 测试 readProperty 与 readContract 等价性
       try {
-        const decimals1 = await clientWithContract.contracts.USDT.readProperty("_decimals");
-        const decimals2 = await clientWithContract.contracts.USDT.readContract("_decimals");
+        const decimals1 = await clientWithContract.contracts.USDT.readProperty(
+          "_decimals",
+        );
+        const decimals2 = await clientWithContract.contracts.USDT.readContract(
+          "_decimals",
+        );
         expect(decimals1).toEqual(decimals2);
         console.log("客户端 readProperty 与 readContract 结果一致:", decimals1);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log("客户端 readProperty 与 readContract 等价性测试:", errorMessage);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
+        console.log(
+          "客户端 readProperty 与 readContract 等价性测试:",
+          errorMessage,
+        );
       }
     });
 
@@ -707,29 +747,40 @@ describe("客户端 Web3Client", () => {
       // 测试使用 readContract 读取类似公有属性的 getter 函数（无参数）
       try {
         // 测试读取 _decimals（类似 uint8 public decimals）
-        const decimals = await clientWithContract.contracts.USDT.readContract("_decimals");
+        const decimals = await clientWithContract.contracts.USDT.readContract(
+          "_decimals",
+        );
         expect(decimals).toBeDefined();
-        expect(typeof decimals === "number" || typeof decimals === "bigint").toBeTruthy();
+        expect(typeof decimals === "number" || typeof decimals === "bigint")
+          .toBeTruthy();
         console.log("客户端 readContract 读取 USDT decimals:", decimals);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract _decimals 测试:", errorMessage);
       }
 
       try {
         // 测试读取 _name（类似 string public name）
-        const name = await clientWithContract.contracts.USDT.readContract("_name");
+        const name = await clientWithContract.contracts.USDT.readContract(
+          "_name",
+        );
         expect(name).toBeDefined();
         expect(typeof name).toBe("string");
         console.log("客户端 readContract 读取 USDT name:", name);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract _name 测试:", errorMessage);
       }
 
       try {
         // 测试读取 _owner（类似 address public owner）
-        const owner = await clientWithContract.contracts.USDT.readContract("_owner");
+        const owner = await clientWithContract.contracts.USDT.readContract(
+          "_owner",
+        );
         expect(owner).toBeDefined();
         expect(typeof owner === "string").toBeTruthy();
         if (typeof owner === "string") {
@@ -737,29 +788,51 @@ describe("客户端 Web3Client", () => {
         }
         console.log("客户端 readContract 读取 USDT owner:", owner);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
         console.log("客户端 readContract _owner 测试:", errorMessage);
       }
 
       // 对比 readContract 和 readProperty 的结果
       try {
-        const decimalsByReadContract = await clientWithContract.contracts.USDT.readContract("_decimals");
-        const decimalsByReadProperty = await clientWithContract.contracts.USDT.readProperty("_decimals");
+        const decimalsByReadContract = await clientWithContract.contracts.USDT
+          .readContract("_decimals");
+        const decimalsByReadProperty = await clientWithContract.contracts.USDT
+          .readProperty("_decimals");
         expect(decimalsByReadContract).toEqual(decimalsByReadProperty);
-        console.log("客户端 readContract 和 readProperty 读取 decimals 结果一致:", decimalsByReadContract);
+        console.log(
+          "客户端 readContract 和 readProperty 读取 decimals 结果一致:",
+          decimalsByReadContract,
+        );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log("客户端 readContract 和 readProperty 对比测试:", errorMessage);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
+        console.log(
+          "客户端 readContract 和 readProperty 对比测试:",
+          errorMessage,
+        );
       }
 
       try {
-        const nameByReadContract = await clientWithContract.contracts.USDT.readContract("_name");
-        const nameByReadProperty = await clientWithContract.contracts.USDT.readProperty("_name");
+        const nameByReadContract = await clientWithContract.contracts.USDT
+          .readContract("_name");
+        const nameByReadProperty = await clientWithContract.contracts.USDT
+          .readProperty("_name");
         expect(nameByReadContract).toEqual(nameByReadProperty);
-        console.log("客户端 readContract 和 readProperty 读取 name 结果一致:", nameByReadContract);
+        console.log(
+          "客户端 readContract 和 readProperty 读取 name 结果一致:",
+          nameByReadContract,
+        );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log("客户端 readContract 和 readProperty 对比 name 测试:", errorMessage);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
+        console.log(
+          "客户端 readContract 和 readProperty 对比 name 测试:",
+          errorMessage,
+        );
       }
     });
   });
@@ -843,7 +916,7 @@ describe("客户端 Web3Client", () => {
         expect(signature).toBeTruthy();
         expect(typeof signature).toBe("string");
         expect(signature.startsWith("0x")).toBeTruthy();
-        
+
         // 注意：在 Mock 环境中，签名是假的，无法通过椭圆曲线验证
         // 这是预期的行为，因为 Mock personal_sign 返回的不是真正的有效签名
         try {

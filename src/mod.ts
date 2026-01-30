@@ -49,6 +49,7 @@ import {
   buildContractsProxy,
   type ContractsProxy,
 } from "./internal/contract-proxy.ts";
+import type { ServiceContainer } from "@dreamer/service";
 
 /**
  * 区块事件回调函数类型
@@ -526,8 +527,14 @@ export class Web3Client {
       // 创建扩展的交易收据
       const extendedReceipt: ExtendedTransactionReceipt = {
         ...receipt,
-        success: receipt.status === "success" ? true : receipt.status === "reverted" ? false : undefined,
-        error: receipt.status === "reverted" ? "交易执行失败，已被回滚" : undefined,
+        success: receipt.status === "success"
+          ? true
+          : receipt.status === "reverted"
+          ? false
+          : undefined,
+        error: receipt.status === "reverted"
+          ? "交易执行失败，已被回滚"
+          : undefined,
       };
 
       return extendedReceipt;
@@ -735,8 +742,14 @@ export class Web3Client {
         // 创建扩展的交易收据
         const extendedReceipt: ExtendedTransactionReceipt = {
           ...receipt,
-          success: receipt.status === "success" ? true : receipt.status === "reverted" ? false : undefined,
-          error: receipt.status === "reverted" ? "交易执行失败，已被回滚" : undefined,
+          success: receipt.status === "success"
+            ? true
+            : receipt.status === "reverted"
+            ? false
+            : undefined,
+          error: receipt.status === "reverted"
+            ? "交易执行失败，已被回滚"
+            : undefined,
         };
 
         return extendedReceipt;
@@ -2308,7 +2321,7 @@ export class Web3Client {
       const hashes = allTransactions.map((t) => t.hash);
       const receipts = await Promise.all(
         hashes.map((h) =>
-          this.getTransactionReceipt(h).catch(() => null as unknown),
+          this.getTransactionReceipt(h).catch(() => null as unknown)
         ),
       );
       for (let i = 0; i < allTransactions.length; i++) {
@@ -2424,3 +2437,162 @@ export {
   toWei,
   Unit,
 } from "./utils.ts";
+
+/**
+ * Web3 管理器配置选项
+ */
+export interface Web3ManagerOptions {
+  /** 管理器名称（用于服务容器识别） */
+  name?: string;
+  /** 默认 Web3 配置 */
+  defaultConfig?: Web3Config;
+}
+
+/**
+ * Web3 管理器
+ *
+ * 管理多个 Web3Client 实例，支持不同的链和配置
+ */
+export class Web3Manager {
+  /** Web3 客户端实例映射表 */
+  private clients: Map<string, Web3Client> = new Map();
+  /** 客户端配置映射表 */
+  private configs: Map<string, Web3Config> = new Map();
+  /** 默认配置 */
+  private defaultConfig?: Web3Config;
+  /** 服务容器实例 */
+  private container?: ServiceContainer;
+  /** 管理器名称 */
+  private readonly managerName: string;
+
+  /**
+   * 创建 Web3 管理器实例
+   * @param options 管理器配置选项
+   */
+  constructor(options: Web3ManagerOptions = {}) {
+    this.managerName = options.name || "default";
+    this.defaultConfig = options.defaultConfig;
+  }
+
+  /**
+   * 获取管理器名称
+   * @returns 管理器名称
+   */
+  getName(): string {
+    return this.managerName;
+  }
+
+  /**
+   * 设置服务容器
+   * @param container 服务容器实例
+   */
+  setContainer(container: ServiceContainer): void {
+    this.container = container;
+  }
+
+  /**
+   * 获取服务容器
+   * @returns 服务容器实例，如果未设置则返回 undefined
+   */
+  getContainer(): ServiceContainer | undefined {
+    return this.container;
+  }
+
+  /**
+   * 从服务容器创建 Web3Manager 实例
+   * @param container 服务容器实例
+   * @param name 管理器名称（默认 "default"）
+   * @returns 关联了服务容器的 Web3Manager 实例
+   */
+  static fromContainer(
+    container: ServiceContainer,
+    name = "default",
+  ): Web3Manager | undefined {
+    const serviceName = `web3:${name}`;
+    return container.tryGet<Web3Manager>(serviceName);
+  }
+
+  /**
+   * 注册 Web3 客户端配置
+   * @param name 客户端名称（如 "ethereum", "polygon", "bsc"）
+   * @param config Web3 配置
+   */
+  registerClient(name: string, config: Web3Config): void {
+    this.configs.set(name, config);
+  }
+
+  /**
+   * 获取或创建 Web3 客户端
+   * @param name 客户端名称
+   * @returns Web3Client 实例
+   * @throws {Error} 如果未注册配置且没有默认配置
+   */
+  getClient(name: string): Web3Client {
+    let client = this.clients.get(name);
+    if (!client) {
+      const config = this.configs.get(name) || this.defaultConfig;
+      if (!config) {
+        throw new Error(`未找到名为 "${name}" 的 Web3 配置`);
+      }
+      client = new Web3Client(config);
+      this.clients.set(name, client);
+    }
+    return client;
+  }
+
+  /**
+   * 检查是否存在指定名称的客户端
+   * @param name 客户端名称
+   * @returns 是否存在
+   */
+  hasClient(name: string): boolean {
+    return this.clients.has(name) || this.configs.has(name);
+  }
+
+  /**
+   * 移除客户端
+   * @param name 客户端名称
+   */
+  async removeClient(name: string): Promise<void> {
+    const client = this.clients.get(name);
+    if (client) {
+      await client.destroy();
+      this.clients.delete(name);
+    }
+    this.configs.delete(name);
+  }
+
+  /**
+   * 获取所有客户端名称
+   * @returns 客户端名称数组
+   */
+  getClientNames(): string[] {
+    const names = new Set([
+      ...this.clients.keys(),
+      ...this.configs.keys(),
+    ]);
+    return Array.from(names);
+  }
+
+  /**
+   * 关闭所有客户端
+   */
+  async close(): Promise<void> {
+    for (const client of this.clients.values()) {
+      await client.destroy();
+    }
+    this.clients.clear();
+  }
+}
+
+/**
+ * 创建 Web3Manager 的工厂函数
+ * 用于服务容器注册
+ * @param options Web3 管理器配置选项
+ * @returns Web3Manager 实例
+ */
+export function createWeb3Manager(
+  options?: Web3ManagerOptions,
+): Web3Manager {
+  return new Web3Manager(options);
+}
