@@ -692,7 +692,19 @@ export class Web3Client {
           // 增加 20% 的缓冲
           gasLimit = (estimatedGas * BigInt(120)) / BigInt(100);
         } catch (error) {
-          // 如果估算失败，使用默认值
+          // 检查是否是执行 revert 错误（合约执行会失败）
+          const errorMessage = getErrorMessage(error);
+          const isExecutionRevert = errorMessage.includes("revert") ||
+            errorMessage.includes("Execution reverted") ||
+            errorMessage.includes("execution reverted");
+
+          if (isExecutionRevert) {
+            // 如果是执行 revert，直接抛出错误，不要发送交易
+            // 因为交易发送后也会 revert，浪费 gas
+						throw new Error(`合约执行会失败: ${errorMessage}`);
+          }
+
+          // 其他 Gas 估算失败（例如网络问题），使用默认值
           console.warn("Gas 估算失败，使用默认值:", error);
           gasLimit = BigInt(100000); // 默认 100k gas
         }
