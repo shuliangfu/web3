@@ -28,6 +28,7 @@ import {
   type Hex,
   parseAbi,
   type PublicClient,
+  type TransactionReceipt,
   verifyMessage as viemVerifyMessage,
   type WalletClient,
 } from "viem";
@@ -134,6 +135,19 @@ export interface ContractReadOptions {
 
 /** viem 的 PublicClient / WalletClient 在运行时可能带有 chain，类型上未必导出；用于替代 (client as any).chain，比 as any 更安全 */
 type ClientWithOptionalChain = { chain?: Chain };
+
+/**
+ * 扩展的交易收据类型
+ * 在 TransactionReceipt 基础上添加 success 和 error 字段
+ */
+export type ExtendedTransactionReceipt = TransactionReceipt & {
+  /** 交易是否成功（true: 成功, false: 失败, undefined: 未知状态） */
+  success?: boolean;
+  /** 错误信息（如果交易失败） */
+  error?: string;
+  /** 错误消息（如果交易确认失败） */
+  message?: string;
+};
 
 /**
  * 客户端 Web3 操作类
@@ -372,10 +386,16 @@ export class Web3Client {
    * @param waitForConfirmation 是否等待交易确认（默认 true）
    * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
    */
+  /**
+   * 调用合约方法（写入操作，客户端版本，使用钱包签名）
+   * @param options 合约调用选项
+   * @param waitForConfirmation 是否等待交易确认（默认 true）
+   * @returns 如果 waitForConfirmation 为 true，返回扩展的交易收据；否则返回交易哈希
+   */
   async callContract(
     options: ContractCallOptions,
     waitForConfirmation: boolean = true,
-  ): Promise<unknown> {
+  ): Promise<ExtendedTransactionReceipt | Hash> {
     const walletClient = this.getWalletClient();
     const accounts = await walletClient.getAddresses();
     if (accounts.length === 0) {
@@ -472,17 +492,19 @@ export class Web3Client {
       // 等待交易确认
       const client = this.getPublicClient();
       try {
-        const receipt = await client.waitForTransactionReceipt({
+        await client.waitForTransactionReceipt({
           hash: hash as Hash,
           confirmations: 1,
         });
-        return receipt;
+
+        // 直接调用 getTransactionReceipt 获取格式化的收据
+        return await this.getTransactionReceipt(hash);
       } catch (receiptError) {
         return {
           success: false,
           error: "交易确认失败",
           message: getErrorMessage(receiptError),
-        };
+        } as ExtendedTransactionReceipt;
       }
     } catch (error) {
       const errorMessage = getErrorMessage(error);
@@ -495,6 +517,75 @@ export class Web3Client {
         throw new Error("交易已取消");
       }
       throw new Error(`调用合约失败: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * 获取交易收据（不等待，直接查询）
+   * @param txHash 交易哈希
+   * @returns 扩展的交易收据（包含 success、error、message 字段）
+   *
+   * @example
+   * // 查询交易收据
+   * const receipt = await web3.getTransactionReceipt('0x...');
+   * if (receipt.success) {
+   *   console.log('交易成功');
+   * } else {
+   *   console.log('交易失败:', receipt.error, receipt.message);
+   * }
+   */
+  async getTransactionReceipt(
+    txHash: string,
+  ): Promise<ExtendedTransactionReceipt> {
+    const client = this.getPublicClient();
+    try {
+      const receipt = await client.getTransactionReceipt({
+        hash: txHash as Hash,
+      });
+
+      // 如果没有收据，返回失败状态
+      if (!receipt) {
+        return {
+          success: false,
+          error: "交易未确认",
+          message: "交易收据未找到，可能尚未确认",
+        } as ExtendedTransactionReceipt;
+      }
+
+      // 创建扩展的交易收据
+      const extendedReceipt: ExtendedTransactionReceipt = {
+        ...receipt,
+        success: receipt.status === "success"
+          ? true
+          : receipt.status === "reverted"
+          ? false
+          : undefined,
+        error: receipt.status === "reverted"
+          ? "交易执行失败，已被回滚"
+          : undefined,
+      };
+
+      return extendedReceipt;
+    } catch (error) {
+      // 如果交易未找到或未确认，返回失败状态
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("could not be found") ||
+        errorMessage.includes("not found") ||
+        errorMessage.includes("Transaction receipt with hash")
+      ) {
+        return {
+          success: false,
+          error: "交易未找到",
+          message: errorMessage,
+        } as ExtendedTransactionReceipt;
+      }
+      // 其他错误也返回失败状态
+      return {
+        success: false,
+        error: "获取交易收据失败",
+        message: errorMessage,
+      } as ExtendedTransactionReceipt;
     }
   }
 

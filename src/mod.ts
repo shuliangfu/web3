@@ -746,25 +746,13 @@ export class Web3Client {
       // 等待交易确认并检查状态
       const publicClient = this.getPublicClient();
       try {
-        const receipt = await publicClient.waitForTransactionReceipt({
+        await publicClient.waitForTransactionReceipt({
           hash: hash as Hash,
           confirmations: 1,
         });
 
-        // 创建扩展的交易收据
-        const extendedReceipt: ExtendedTransactionReceipt = {
-          ...receipt,
-          success: receipt.status === "success"
-            ? true
-            : receipt.status === "reverted"
-            ? false
-            : undefined,
-          error: receipt.status === "reverted"
-            ? "交易执行失败，已被回滚"
-            : undefined,
-        };
-
-        return extendedReceipt;
+        // 直接调用 getTransactionReceipt 获取格式化的收据
+        return await this.getTransactionReceipt(hash);
       } catch (receiptError) {
         return {
           success: false,
@@ -1026,23 +1014,71 @@ export class Web3Client {
   }
 
   /**
-   * 获取交易收据
+   * 获取交易收据（不等待，直接查询）
    * @param txHash 交易哈希
-   * @returns 交易收据
+   * @returns 扩展的交易收据（包含 success、error、message 字段）
+   *
+   * @example
+   * // 查询交易收据
+   * const receipt = await web3.getTransactionReceipt('0x...');
+   * if (receipt.success) {
+   *   console.log('交易成功');
+   * } else {
+   *   console.log('交易失败:', receipt.error, receipt.message);
+   * }
    */
-  async getTransactionReceipt(txHash: string): Promise<unknown> {
+  async getTransactionReceipt(
+    txHash: string,
+  ): Promise<ExtendedTransactionReceipt> {
     const client = this.getPublicClient();
     try {
       const receipt = await client.getTransactionReceipt({
         hash: txHash as Hash,
       });
-      return receipt;
+
+      // 如果没有收据，返回失败状态
+      if (!receipt) {
+        return {
+          success: false,
+          error: "交易未确认",
+          message: "交易收据未找到，可能尚未确认",
+        } as ExtendedTransactionReceipt;
+      }
+
+      // 创建扩展的交易收据
+      const extendedReceipt: ExtendedTransactionReceipt = {
+        ...receipt,
+        success: receipt.status === "success"
+          ? true
+          : receipt.status === "reverted"
+          ? false
+          : undefined,
+        error: receipt.status === "reverted"
+          ? "交易执行失败，已被回滚"
+          : undefined,
+      };
+
+      return extendedReceipt;
     } catch (error) {
-      throw new Error(
-        `获取交易收据失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      // 如果交易未找到或未确认，返回失败状态
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("could not be found") ||
+        errorMessage.includes("not found") ||
+        errorMessage.includes("Transaction receipt with hash")
+      ) {
+        return {
+          success: false,
+          error: "交易未找到",
+          message: errorMessage,
+        } as ExtendedTransactionReceipt;
+      }
+      // 其他错误也返回失败状态
+      return {
+        success: false,
+        error: "获取交易收据失败",
+        message: errorMessage,
+      } as ExtendedTransactionReceipt;
     }
   }
 
