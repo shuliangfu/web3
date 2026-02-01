@@ -70,6 +70,21 @@ await esbuild.build({
 
 console.log("[build-browser] ✅ dist/web3-client.esm.min.js");
 
+// 3. 生成类型声明文件（重新导出 TypeScript 源文件的类型）
+const dtsContent = `/**
+ * 客户端 Web3 操作类型声明
+ * 此文件从 TypeScript 源文件重新导出类型
+ */
+export * from "../src/client/mod.ts";
+`;
+
+// 为完整版和压缩版都生成类型声明
+await Deno.writeTextFile(resolve(ROOT, "dist/web3-client.esm.d.ts"), dtsContent);
+await Deno.writeTextFile(resolve(ROOT, "dist/web3-client.esm.min.d.ts"), dtsContent);
+
+console.log("[build-browser] ✅ dist/web3-client.esm.d.ts");
+console.log("[build-browser] ✅ dist/web3-client.esm.min.d.ts");
+
 // 获取文件大小
 const stats = await Deno.stat(resolve(ROOT, "dist/web3-client.esm.min.js"));
 const sizeKB = (stats.size / 1024).toFixed(1);

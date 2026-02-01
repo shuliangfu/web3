@@ -13,8 +13,8 @@
   "publish": {
     "include": [
       "src/**/*.ts",
-      "dist/**/*.js",
-      "dist/**/*.map",
+      "dist/*.js",
+      "dist/*.d.ts",
       "LICENSE.md",
       "README.md"
     ],
@@ -22,8 +22,7 @@
       "**/*.test.ts",
       "**/*.spec.ts",
       "**/test/**",
-      "**/tests/**",
-			"build-browser.ts"
+      "**/tests/**"
     ]
   },
   "lint": {
