@@ -1,17 +1,20 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.6-beta.10",
+  "version": "1.0.6-beta.11",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./client": "./src/client/mod.ts"
+    "./client": "./dist/web3-client.esm.min.js"
   },
-  "scripts": {
-    "test": "bun test -A tests/*"
+  "tasks": {
+    "test": "bun test -A tests/*",
+    "build": "deno run -A build-browser.ts"
   },
   "publish": {
     "include": [
       "src/**/*.ts",
+      "dist/**/*.js",
+      "dist/**/*.map",
       "LICENSE.md",
       "README.md"
     ],
@@ -19,7 +22,8 @@
       "**/*.test.ts",
       "**/*.spec.ts",
       "**/test/**",
-      "**/tests/**"
+      "**/tests/**",
+			"build-browser.ts"
     ]
   },
   "lint": {
