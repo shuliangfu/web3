@@ -131,6 +131,12 @@ export interface ContractReadOptions {
   args?: unknown[];
   /** 完整 ABI（可选），如果提供则优先使用，如果未提供则使用配置中的 abi */
   abi?: string[] | Array<Record<string, unknown>> | Abi;
+  /**
+   * 是否将多返回值结果转换为命名对象（默认 true）
+   * 如果 ABI 中定义了返回值名称，会返回 { key1: value1, key2: value2 } 格式
+   * 设置为 false 则返回数组格式 [value1, value2]
+   */
+  returnAsObject?: boolean;
 }
 
 /** viem 的 PublicClient / WalletClient 在运行时可能带有 chain，类型上未必导出；用于替代 (client as any).chain，比 as any 更安全 */
@@ -374,6 +380,26 @@ export class Web3Client {
         args: (formattedArgs ?? undefined) as readonly unknown[] | undefined,
       });
 
+      // 如果启用了 returnAsObject（默认 true）且结果是数组，尝试转换为命名对象
+      if (options.returnAsObject !== false && Array.isArray(result)) {
+        // 从 ABI 中查找函数的返回值名称
+        const outputNames = this.getOutputNamesFromAbi(
+          parsedAbi,
+          options.functionName,
+        );
+
+        // 如果找到了返回值名称，转换为对象
+        if (outputNames && outputNames.length === result.length) {
+          const resultObj: Record<string, unknown> = {};
+          for (let i = 0; i < outputNames.length; i++) {
+            // 使用返回值名称作为键，如果没有名称则使用索引
+            const key = outputNames[i] || `output${i}`;
+            resultObj[key] = result[i];
+          }
+          return resultObj;
+        }
+      }
+
       return result;
     } catch (error: unknown) {
       throw new Error(`读取合约失败: ${getErrorMessage(error)}`);
@@ -381,11 +407,30 @@ export class Web3Client {
   }
 
   /**
-   * 调用合约方法（写入操作）
-   * @param options 合约调用选项
-   * @param waitForConfirmation 是否等待交易确认（默认 true）
-   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
+   * 从 ABI 中获取函数的返回值名称列表
+   * @param abi ABI 数组
+   * @param functionName 函数名
+   * @returns 返回值名称数组，如果没有找到则返回 null
    */
+  private getOutputNamesFromAbi(
+    abi: Abi,
+    functionName: string,
+  ): string[] | null {
+    // 遍历 ABI 查找匹配的函数
+    for (const item of abi) {
+      if (
+        item.type === "function" &&
+        item.name === functionName &&
+        item.outputs &&
+        item.outputs.length > 0
+      ) {
+        // 提取所有返回值的名称
+        return item.outputs.map((output) => output.name || "");
+      }
+    }
+    return null;
+  }
+
   /**
    * 调用合约方法（写入操作，客户端版本，使用钱包签名）
    * @param options 合约调用选项

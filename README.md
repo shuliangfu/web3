@@ -4,7 +4,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-138%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -52,6 +52,7 @@ bunx jsr add @dreamer/web3
 - **合约交互**：
   - 读取合约数据（只读方法）
   - 读取合约公有属性（便捷方法 `readProperty`）
+  - 多返回值自动转换为命名对象（`returnAsObject` 默认开启）
   - 调用合约方法（需要私钥签名）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
@@ -137,6 +138,34 @@ const result = await web3.readContract({
 });
 
 console.log("总供应量:", result);
+
+// 多返回值自动转换为命名对象（returnAsObject 默认为 true）
+// 例如：function getInfo() returns (string name, uint256 value, address owner)
+const info = await web3.readContract({
+  address: "0x...",
+  abi: [
+    {
+      name: "getInfo",
+      type: "function",
+      stateMutability: "view",
+      inputs: [],
+      outputs: [
+        { name: "name", type: "string" },
+        { name: "value", type: "uint256" },
+        { name: "owner", type: "address" },
+      ],
+    },
+  ],
+  functionName: "getInfo",
+});
+// 返回: { name: "...", value: 123n, owner: "0x..." }
+
+// 如需返回数组格式，设置 returnAsObject: false
+const infoArray = await web3.readContract({
+  // ...同上配置
+  returnAsObject: false,
+});
+// 返回: ["...", 123n, "0x..."]
 ```
 
 ### 合约代理功能
@@ -186,9 +215,13 @@ const web3 = new Web3Client({
 const tx = await web3.getTransaction("0x...");
 console.log("交易信息:", tx);
 
-// 获取交易收据
+// 获取交易收据（返回 ExtendedTransactionReceipt，包含 success 字段）
 const receipt = await web3.getTransactionReceipt("0x...");
-console.log("交易收据:", receipt);
+if (receipt.success) {
+  console.log("交易成功:", receipt);
+} else {
+  console.log("交易失败:", receipt.error, receipt.message);
+}
 
 // 等待交易确认
 const confirmedReceipt = await web3.waitForTransaction("0x...", 3); // 等待 3 个确认

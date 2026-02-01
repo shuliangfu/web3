@@ -17748,17 +17748,39 @@ var Web3Client = class {
         functionName: options.functionName,
         args: formattedArgs ?? void 0
       });
+      if (options.returnAsObject !== false && Array.isArray(result)) {
+        const outputNames = this.getOutputNamesFromAbi(
+          parsedAbi,
+          options.functionName
+        );
+        if (outputNames && outputNames.length === result.length) {
+          const resultObj = {};
+          for (let i = 0; i < outputNames.length; i++) {
+            const key = outputNames[i] || `output${i}`;
+            resultObj[key] = result[i];
+          }
+          return resultObj;
+        }
+      }
       return result;
     } catch (error) {
       throw new Error(`\u8BFB\u53D6\u5408\u7EA6\u5931\u8D25: ${getErrorMessage(error)}`);
     }
   }
   /**
-   * 调用合约方法（写入操作）
-   * @param options 合约调用选项
-   * @param waitForConfirmation 是否等待交易确认（默认 true）
-   * @returns 如果 waitForConfirmation 为 true，返回交易收据；否则返回交易哈希
+   * 从 ABI 中获取函数的返回值名称列表
+   * @param abi ABI 数组
+   * @param functionName 函数名
+   * @returns 返回值名称数组，如果没有找到则返回 null
    */
+  getOutputNamesFromAbi(abi2, functionName) {
+    for (const item of abi2) {
+      if (item.type === "function" && item.name === functionName && item.outputs && item.outputs.length > 0) {
+        return item.outputs.map((output) => output.name || "");
+      }
+    }
+    return null;
+  }
   /**
    * 调用合约方法（写入操作，客户端版本，使用钱包签名）
    * @param options 合约调用选项
