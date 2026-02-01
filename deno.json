@@ -22,8 +22,7 @@
       "**/*.test.ts",
       "**/*.spec.ts",
       "**/test/**",
-      "**/tests/**",
-      "!dist/"
+      "**/tests/**"
     ]
   },
   "lint": {
