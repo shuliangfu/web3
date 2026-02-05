@@ -242,9 +242,9 @@
   - 对比 `readContract` 和 `readProperty` 读取 decimals 的结果一致性
   - 对比 `readContract` 和 `readProperty` 读取 name 的结果一致性
   - **测试场景数**: 5 个
-- ✅ readContract 应该支持 returnAsObject 返回命名对象
-  - 测试 `returnAsObject` 默认值为 `true`（多返回值自动转换为命名对象）
-  - 测试 `returnAsObject: false` 返回数组格式
+- ✅ readContract 应该支持 returnJson 返回命名对象
+  - 测试 `returnJson` 默认值为 `true`（多返回值自动转换为命名对象）
+  - 测试 `returnJson: false` 返回数组格式
   - 验证 ABI 中返回值名称的提取和转换逻辑
   - **测试场景数**: 3 个
 

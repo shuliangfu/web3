@@ -17748,7 +17748,7 @@ var Web3Client = class {
         functionName: options.functionName,
         args: formattedArgs ?? void 0
       });
-      if (options.returnAsObject !== false && Array.isArray(result)) {
+      if (options.returnJson !== false && Array.isArray(result)) {
         const outputNames = this.getOutputNamesFromAbi(
           parsedAbi,
           options.functionName

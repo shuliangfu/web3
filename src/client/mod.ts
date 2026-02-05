@@ -136,7 +136,7 @@ export interface ContractReadOptions {
    * 如果 ABI 中定义了返回值名称，会返回 { key1: value1, key2: value2 } 格式
    * 设置为 false 则返回数组格式 [value1, value2]
    */
-  returnAsObject?: boolean;
+  returnJson?: boolean;
 }
 
 /** viem 的 PublicClient / WalletClient 在运行时可能带有 chain，类型上未必导出；用于替代 (client as any).chain，比 as any 更安全 */
@@ -380,8 +380,8 @@ export class Web3Client {
         args: (formattedArgs ?? undefined) as readonly unknown[] | undefined,
       });
 
-      // 如果启用了 returnAsObject（默认 true）且结果是数组，尝试转换为命名对象
-      if (options.returnAsObject !== false && Array.isArray(result)) {
+      // 如果启用了 returnJson（默认 true）且结果是数组，尝试转换为命名对象
+      if (options.returnJson !== false && Array.isArray(result)) {
         // 从 ABI 中查找函数的返回值名称
         const outputNames = this.getOutputNamesFromAbi(
           parsedAbi,

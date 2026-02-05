@@ -52,7 +52,7 @@ bunx jsr add @dreamer/web3
 - **合约交互**：
   - 读取合约数据（只读方法）
   - 读取合约公有属性（便捷方法 `readProperty`）
-  - 多返回值自动转换为命名对象（`returnAsObject` 默认开启）
+  - 多返回值自动转换为命名对象（`returnJson` 默认 true）
   - 调用合约方法（需要私钥签名）
   - 合约字节码查询
   - 合约事件监听（通过 RPC）
@@ -139,7 +139,7 @@ const result = await web3.readContract({
 
 console.log("总供应量:", result);
 
-// 多返回值自动转换为命名对象（returnAsObject 默认为 true）
+// 多返回值自动转换为命名对象（returnJson 默认为 true）
 // 例如：function getInfo() returns (string name, uint256 value, address owner)
 const info = await web3.readContract({
   address: "0x...",
@@ -160,10 +160,10 @@ const info = await web3.readContract({
 });
 // 返回: { name: "...", value: 123n, owner: "0x..." }
 
-// 如需返回数组格式，设置 returnAsObject: false
+// 如需返回数组格式，设置 returnJson: false
 const infoArray = await web3.readContract({
   // ...同上配置
-  returnAsObject: false,
+  returnJson: false,
 });
 // 返回: ["...", 123n, "0x..."]
 ```
