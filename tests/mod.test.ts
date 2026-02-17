@@ -1569,8 +1569,9 @@ describe("Web3Manager", () => {
 
   it("应该在未注册配置时抛出错误", () => {
     const manager = new Web3Manager();
+    // 错误信息随 i18n  locale 变化（中文/英文），用正则同时匹配
     expect(() => manager.getClient("unknown")).toThrow(
-      '未找到名为 "unknown" 的 Web3 配置',
+      /(未找到|not found).*unknown|unknown.*(未找到|not found)/i,
     );
   });
 

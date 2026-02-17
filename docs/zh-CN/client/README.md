@@ -3,7 +3,7 @@
 > 一个用于浏览器的 Web3 操作辅助库，支持钱包连接和交互
 
 [![JSR](https://jsr.io/badges/@dreamer/web3/client)](https://jsr.io/@dreamer/web3/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
 
 ---
 
@@ -399,7 +399,7 @@ import { fromWei, isAddress, toWei } from "jsr:@dreamer/web3/client";
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE.md](../../../LICENSE.md)
+Apache License 2.0 - 详见 [LICENSE](../../../LICENSE)
 
 ---
 
