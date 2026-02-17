@@ -613,7 +613,9 @@ export class Web3Client {
       return extendedReceipt;
     } catch (error) {
       // 如果交易未找到或未确认，返回失败状态
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       if (
         errorMessage.includes("could not be found") ||
         errorMessage.includes("not found") ||
@@ -911,4 +913,4 @@ export {
   toChecksumAddress,
   toWei,
   Unit,
-} from "../utils.ts";
+} from "./utils.ts";

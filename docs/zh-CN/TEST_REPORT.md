@@ -13,7 +13,7 @@
 
 ### 测试环境
 
-- **测试库版本**: @dreamer/web3@1.0.6-beta.11
+- **测试包版本**: @dreamer/web3@1.0.6-beta.11
 - **服务容器版本**: @dreamer/service@1.0.0-beta.4
 - **测试框架**: @dreamer/test (兼容 Deno 和 Bun)
 - **测试时间**: 2026-01-30
@@ -869,7 +869,7 @@ deno test -A tests/utils.test.ts
 ## ✅ 结论
 
 所有测试用例均已通过，测试覆盖率达到
-**100%**。库的核心功能、边界情况和错误处理都已得到充分测试。测试包括：
+**100%**。包的核心功能、边界情况和错误处理都已得到充分测试。测试包括：
 
 - ✅ 真实区块链网络交互（Anvil 本地网络）
 - ✅ 多种交易格式支持
@@ -884,7 +884,7 @@ deno test -A tests/utils.test.ts
   - 验证 `readProperty` 与 `readContract` 的等价性
   - 测试覆盖了多种类型的公有属性（uint8、string、address 等）
 
-库已准备好用于生产环境。
+包已准备好用于生产环境。
 
 ---
 

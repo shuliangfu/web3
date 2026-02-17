@@ -4,6 +4,7 @@
  */
 
 import type { Abi } from "viem";
+import { $t } from "../i18n.ts";
 
 /**
  * Web3 客户端最小接口，供 ContractProxy 使用
@@ -158,13 +159,19 @@ export function buildContractsProxy(
   const list = Array.isArray(contracts) ? contracts : [contracts];
   for (const contract of list) {
     if (!contract.name) {
-      throw new Error("合约配置必须包含 name 字段");
+      throw new Error($t("errors.contractNameRequired"));
     }
     if (!contract.address) {
-      throw new Error(`合约 ${contract.name} 必须包含 address 字段`);
+      throw new Error(
+        $t("errors.contractAddressFieldRequired", {
+          contractName: contract.name,
+        }),
+      );
     }
     if (!contract.abi) {
-      throw new Error(`合约 ${contract.name} 必须包含 abi 字段`);
+      throw new Error(
+        $t("errors.contractAbiFieldRequired", { contractName: contract.name }),
+      );
     }
     contractsProxy[contract.name] = new ContractProxy(client, contract);
   }

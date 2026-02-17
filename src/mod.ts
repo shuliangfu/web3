@@ -50,6 +50,9 @@ import {
   type ContractsProxy,
 } from "./internal/contract-proxy.ts";
 import type { ServiceContainer } from "@dreamer/service";
+import { $t, initWeb3I18n } from "./i18n.ts";
+
+initWeb3I18n();
 
 /**
  * 区块事件回调函数类型
@@ -241,7 +244,7 @@ export class Web3Client {
    */
   constructor(config: Web3Config) {
     if (!config.rpcUrl) {
-      throw new Error("服务端版本必须配置 rpcUrl");
+      throw new Error($t("errors.serverRpcRequired"));
     }
     this.config = config;
     // 初始化合约代理对象（使用 internal 的 buildContractsProxy）
@@ -283,7 +286,7 @@ export class Web3Client {
 
     // 检查是否配置了 rpcUrl
     if (!this.config.rpcUrl) {
-      throw new Error("RPC URL 未配置，请设置 rpcUrl");
+      throw new Error($t("errors.rpcNotConfigured"));
     }
 
     // 使用 HTTP transport 创建 PublicClient
@@ -294,9 +297,9 @@ export class Web3Client {
       return this.publicClient;
     } catch (error) {
       throw new Error(
-        `创建 PublicClient 失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.createPublicClientFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -318,9 +321,7 @@ export class Web3Client {
 
     if (!wssUrl) {
       // 如果没有 WebSocket URL，回退到 HTTP client（不推荐，但兼容）
-      console.warn(
-        "[Web3Client] 未配置 WebSocket URL，事件监听将使用 HTTP 轮询（性能较差）",
-      );
+      console.warn($t("warnings.wsNotConfigured"));
       return this.getPublicClient();
     }
 
@@ -334,9 +335,9 @@ export class Web3Client {
       return this.wsClient;
     } catch (error) {
       console.warn(
-        `[Web3Client] 创建 WebSocket PublicClient 失败，回退到 HTTP: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("warnings.wsCreateFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
       // 如果 WebSocket 创建失败，回退到 HTTP
       return this.getPublicClient();
@@ -355,17 +356,13 @@ export class Web3Client {
 
     // 检查是否配置了 rpcUrl 和 privateKey
     if (!this.config.rpcUrl || !this.config.privateKey) {
-      throw new Error(
-        "RPC URL 或私钥未配置，请设置 rpcUrl 和 privateKey",
-      );
+      throw new Error($t("errors.rpcOrPrivateKeyNotConfigured"));
     }
 
     // 注意：viem 的 WalletClient 主要用于浏览器钱包
     // 服务端环境需要使用 privateKey 创建账户，但 viem 的 WalletClient 不支持直接使用 privateKey
     // 这里抛出错误，提示用户使用其他方式（如直接使用 viem 的账户功能）
-    throw new Error(
-      "服务端环境需要使用 privateKey 创建账户，请使用 viem 的账户功能或其他方式",
-    );
+    throw new Error($t("errors.serverNeedPrivateKey"));
   }
 
   /**
@@ -382,9 +379,9 @@ export class Web3Client {
       return balance.toString();
     } catch (error) {
       throw new Error(
-        `获取余额失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBalanceFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -403,9 +400,9 @@ export class Web3Client {
       return count;
     } catch (error) {
       throw new Error(
-        `获取交易计数失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getTransactionCountFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -418,9 +415,7 @@ export class Web3Client {
   async sendTransaction(options: TransactionOptions): Promise<string> {
     // 检查是否配置了私钥
     if (!this.config.privateKey) {
-      throw new Error(
-        "私钥未配置，服务端环境需要使用 privateKey 来签名和发送交易",
-      );
+      throw new Error($t("errors.privateKeyNotConfigured"));
     }
 
     try {
@@ -471,7 +466,11 @@ export class Web3Client {
           }
         } catch (error) {
           // 如果获取失败，使用默认值
-          console.warn("获取 gas 价格失败，使用默认值:", error);
+          console.warn(
+            $t("warnings.getGasPriceFallback", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
         }
       }
 
@@ -506,9 +505,9 @@ export class Web3Client {
       return hash;
     } catch (error) {
       throw new Error(
-        `发送交易失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.sendTransactionFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -566,18 +565,14 @@ export class Web3Client {
   ): Promise<ExtendedTransactionReceipt | Hash> {
     // 检查是否配置了私钥
     if (!this.config.privateKey) {
-      throw new Error(
-        "私钥未配置，服务端环境需要使用 privateKey 来签名和发送交易",
-      );
+      throw new Error($t("errors.privateKeyNotConfigured"));
     }
 
     try {
       // 从配置或选项中获取合约地址
       const contractAddress = options.address || this.config.address;
       if (!contractAddress) {
-        throw new Error(
-          "合约地址未提供，请在 options 中提供 address 或在配置中设置 address",
-        );
+        throw new Error($t("errors.contractAddressRequired"));
       }
 
       let parsedAbi: Abi;
@@ -680,7 +675,11 @@ export class Web3Client {
         }
       } catch (error) {
         // 如果获取失败，使用默认值
-        console.warn("获取 gas 价格失败，使用默认值:", error);
+        console.warn(
+          $t("warnings.getGasPriceFallback", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
       }
 
       // 估算 gas（如果未提供）
@@ -707,11 +706,17 @@ export class Web3Client {
           if (isExecutionRevert) {
             // 如果是执行 revert，直接抛出错误，不要发送交易
             // 因为交易发送后也会 revert，浪费 gas
-						throw new Error(`合约执行会失败: ${errorMessage}`);
+            throw new Error(
+              $t("errors.contractExecuteWillFail", { error: errorMessage }),
+            );
           }
 
           // 其他 Gas 估算失败（例如网络问题），使用默认值
-          console.warn("Gas 估算失败，使用默认值:", error);
+          console.warn(
+            $t("warnings.estimateGasFallback", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
           gasLimit = BigInt(100000); // 默认 100k gas
         }
       }
@@ -769,14 +774,15 @@ export class Web3Client {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       if (
+        // 这里不能写 i18n 翻译
         errorMessage.includes("User rejected") ||
         errorMessage.includes("user rejected") ||
         errorMessage.includes("用户取消") ||
         errorMessage.includes("用户拒绝")
       ) {
-        throw new Error("交易已取消");
+        throw new Error($t("errors.transactionCancelled"));
       }
-      throw new Error(`调用合约失败: ${errorMessage}`);
+      throw new Error($t("errors.callContractFailed", { error: errorMessage }));
     }
   }
 
@@ -843,9 +849,7 @@ export class Web3Client {
     // 从配置或选项中获取合约地址（在 try 块外定义，以便在 catch 中使用）
     const contractAddress = options.address || this.config.address;
     if (!contractAddress) {
-      throw new Error(
-        "合约地址未提供，请在 options 中提供 address 或在配置中设置 address",
-      );
+      throw new Error($t("errors.contractAddressRequired"));
     }
 
     try {
@@ -966,17 +970,15 @@ export class Web3Client {
         errorMessage.includes("BAD_DATA")
       ) {
         throw new Error(
-          `合约调用返回空数据或执行 revert。可能原因：` +
-            `1. 合约在该地址不存在或未部署；` +
-            `2. 函数执行 revert（例如：该地址没有用户信息）；` +
-            `3. RPC 节点返回了空数据。` +
-            `合约地址: ${contractAddress}，` +
-            `函数: ${options.functionName}，` +
-            `参数: ${JSON.stringify(options.args)}，` +
-            `错误: ${errorMessage}`,
+          $t("errors.readContractRevertReasons", {
+            contractAddress,
+            functionName: options.functionName,
+            args: JSON.stringify(options.args),
+            error: errorMessage,
+          }),
         );
       }
-      throw new Error(`读取合约失败: ${errorMessage}`);
+      throw new Error($t("errors.readContractFailed", { error: errorMessage }));
     }
   }
 
@@ -991,9 +993,9 @@ export class Web3Client {
       return gasPrice.toString();
     } catch (error) {
       throw new Error(
-        `获取 Gas 价格失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getGasPriceFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1015,9 +1017,9 @@ export class Web3Client {
       return gasEstimate.toString();
     } catch (error) {
       throw new Error(
-        `估算 Gas 失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.estimateGasFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1036,9 +1038,9 @@ export class Web3Client {
       return block;
     } catch (error) {
       throw new Error(
-        `获取区块信息失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBlockFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1057,9 +1059,9 @@ export class Web3Client {
       return tx;
     } catch (error) {
       throw new Error(
-        `获取交易信息失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getTransactionFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1112,7 +1114,9 @@ export class Web3Client {
       return extendedReceipt;
     } catch (error) {
       // 如果交易未找到或未确认，返回失败状态
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : String(error);
       if (
         errorMessage.includes("could not be found") ||
         errorMessage.includes("not found") ||
@@ -1184,22 +1188,40 @@ export class Web3Client {
               try {
                 await Promise.resolve(listener(blockNumber, block));
               } catch (error) {
-                console.error("[Web3Client] 区块监听器错误:", error);
+                console.error(
+                  $t("warnings.blockListenerError", {
+                    error: error instanceof Error
+                      ? error.message
+                      : String(error),
+                  }),
+                );
               }
             }
           } catch (error) {
-            console.error("[Web3Client] 处理区块失败:", error);
+            console.error(
+              $t("warnings.processBlockFailed", {
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            );
             // 如果处理区块失败，可能是连接问题，触发重连
             this.handleBlockListenerError();
           }
         },
         onError: (error) => {
-          console.error("[Web3Client] 区块监听错误:", error);
+          console.error(
+            $t("warnings.blockListenError", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
           this.handleBlockListenerError();
         },
       });
     } catch (error) {
-      console.error("[Web3Client] 启动区块监听失败:", error);
+      console.error(
+        $t("warnings.startBlockListenFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
       this.blockListenerStarted = false;
       this.scheduleBlockReconnect();
     }
@@ -1228,7 +1250,11 @@ export class Web3Client {
       this.blockListenerStarted = false;
       this.blockReconnectAttempts = 0;
     } catch (error) {
-      console.error("[Web3Client] 停止区块监听失败:", error);
+      console.error(
+        $t("warnings.stopBlockListenFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
@@ -1246,7 +1272,9 @@ export class Web3Client {
   private handleBlockListenerError(): void {
     if (this.blockReconnectAttempts >= this.maxReconnectAttempts) {
       console.error(
-        `[Web3Client] 区块监听重连次数已达上限 (${this.maxReconnectAttempts})，停止自动重连`,
+        $t("warnings.blockReconnectMaxReached", {
+          max: String(this.maxReconnectAttempts),
+        }),
       );
       return;
     }
@@ -1278,7 +1306,11 @@ export class Web3Client {
         this.publicClient = null;
         this.startBlockListener();
       } catch (error) {
-        console.error("[Web3Client] 区块监听重连失败:", error);
+        console.error(
+          $t("warnings.blockReconnectFailed", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
         this.scheduleBlockReconnect();
       }
     }, delay) as unknown as number;
@@ -1336,26 +1368,50 @@ export class Web3Client {
                   try {
                     await Promise.resolve(listener(txHash, tx));
                   } catch (error) {
-                    console.error("[Web3Client] 交易监听器错误:", error);
+                    console.error(
+                      $t("warnings.transactionListenerError", {
+                        error: error instanceof Error
+                          ? error.message
+                          : String(error),
+                      }),
+                    );
                   }
                 }
               } catch (error) {
-                console.error("[Web3Client] 获取交易信息失败:", error);
+                console.error(
+                  $t("warnings.getTransactionInfoFailed", {
+                    error: error instanceof Error
+                      ? error.message
+                      : String(error),
+                  }),
+                );
               }
             }
           } catch (error) {
-            console.error("[Web3Client] 处理交易失败:", error);
+            console.error(
+              $t("warnings.processTransactionFailed", {
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            );
             // 如果处理交易失败，可能是连接问题，触发重连
             this.handleTransactionListenerError();
           }
         },
         onError: (error) => {
-          console.error("[Web3Client] 交易监听错误:", error);
+          console.error(
+            $t("warnings.transactionListenError", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
           this.handleTransactionListenerError();
         },
       });
     } catch (error) {
-      console.error("[Web3Client] 启动交易监听失败:", error);
+      console.error(
+        $t("warnings.startTransactionListenFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
       this.transactionListenerStarted = false;
       this.scheduleTransactionReconnect();
     }
@@ -1367,7 +1423,9 @@ export class Web3Client {
   private handleTransactionListenerError(): void {
     if (this.transactionReconnectAttempts >= this.maxReconnectAttempts) {
       console.error(
-        `[Web3Client] 交易监听重连次数已达上限 (${this.maxReconnectAttempts})，停止自动重连`,
+        $t("warnings.transactionReconnectMaxReached", {
+          max: String(this.maxReconnectAttempts),
+        }),
       );
       return;
     }
@@ -1399,7 +1457,11 @@ export class Web3Client {
         this.publicClient = null;
         this.startTransactionListener();
       } catch (error) {
-        console.error("[Web3Client] 交易监听重连失败:", error);
+        console.error(
+          $t("warnings.transactionReconnectFailed", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
         this.scheduleTransactionReconnect();
       }
     }, delay) as unknown as number;
@@ -1428,7 +1490,11 @@ export class Web3Client {
       this.transactionListenerStarted = false;
       this.transactionReconnectAttempts = 0;
     } catch (error) {
-      console.error("[Web3Client] 停止交易监听失败:", error);
+      console.error(
+        $t("warnings.stopTransactionListenFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
@@ -1498,8 +1564,11 @@ export class Web3Client {
         options.abi,
       ).catch((error) => {
         console.error(
-          `[Web3Client] 扫描历史合约事件失败 (${contractAddress}:${eventName}):`,
-          error,
+          $t("warnings.scanContractEventsFailedLog", {
+            contractAddress,
+            eventName,
+            error: error instanceof Error ? error.message : String(error),
+          }),
         );
       });
     }
@@ -1584,16 +1653,19 @@ export class Web3Client {
           await Promise.resolve(callback(log));
         } catch (error) {
           console.warn(
-            `[Web3Client] 解析历史事件失败 (${contractAddress}:${eventName}):`,
-            error,
+            $t("warnings.parseHistoryEventFailed", {
+              contractAddress,
+              eventName,
+              error: error instanceof Error ? error.message : String(error),
+            }),
           );
         }
       }
     } catch (error) {
       throw new Error(
-        `扫描历史合约事件失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.scanContractEventsFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1641,19 +1713,33 @@ export class Web3Client {
                   try {
                     await Promise.resolve(listener(log));
                   } catch (error) {
-                    console.error("[Web3Client] 合约事件监听器错误:", error);
+                    console.error(
+                      $t("warnings.contractEventListenerError", {
+                        error: error instanceof Error
+                          ? error.message
+                          : String(error),
+                      }),
+                    );
                   }
                 }
               }
             } catch (error) {
-              console.error("[Web3Client] 处理合约事件失败:", error);
+              console.error(
+                $t("warnings.processContractEventFailed", {
+                  error: error instanceof Error ? error.message : String(error),
+                }),
+              );
               // 如果处理事件失败，可能是连接问题，触发重连
               this.handleContractEventListenerError(contractAddress, eventName);
             }
           }
         },
         onError: (error) => {
-          console.error("[Web3Client] 合约事件监听错误:", error);
+          console.error(
+            $t("warnings.contractEventListenError", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
           this.handleContractEventListenerError(contractAddress, eventName);
         },
       });
@@ -1662,8 +1748,11 @@ export class Web3Client {
       this.contractWatchUnsubscribes.set(key, unsubscribe);
     } catch (error) {
       console.error(
-        `[Web3Client] 启动合约事件监听失败 (${contractAddress}:${eventName}):`,
-        error,
+        $t("warnings.startContractEventListenFailed", {
+          contractAddress,
+          eventName,
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
       this.scheduleContractReconnect(contractAddress, eventName, abi);
     }
@@ -1681,7 +1770,10 @@ export class Web3Client {
 
     if (attempts >= this.maxReconnectAttempts) {
       console.error(
-        `[Web3Client] 合约事件监听重连次数已达上限 (${this.maxReconnectAttempts})，停止自动重连: ${key}`,
+        $t("warnings.contractEventReconnectMaxReached", {
+          max: String(this.maxReconnectAttempts),
+          key,
+        }),
       );
       return;
     }
@@ -1721,7 +1813,11 @@ export class Web3Client {
         this.publicClient = null;
         this.startContractEventListener(contractAddress, eventName, abi);
       } catch (error) {
-        console.error("[Web3Client] 合约事件监听重连失败:", error);
+        console.error(
+          $t("warnings.contractEventReconnectFailed", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
         this.scheduleContractReconnect(contractAddress, eventName, abi);
       }
     }, delay) as unknown as number;
@@ -1761,8 +1857,11 @@ export class Web3Client {
       }
     } catch (error) {
       console.error(
-        `[Web3Client] 停止合约事件监听失败 (${contractAddress}:${eventName}):`,
-        error,
+        $t("warnings.stopContractEventListenFailed", {
+          contractAddress,
+          eventName,
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1911,9 +2010,9 @@ export class Web3Client {
       return Number(blockNumber);
     } catch (error) {
       throw new Error(
-        `获取区块号失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBlockNumberFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -1954,7 +2053,7 @@ export class Web3Client {
         ? error.message
         : String(error);
       throw new Error(
-        `获取网络信息失败: ${errorMessage}`,
+        $t("errors.getNetworkInfoFailed", { error: errorMessage }),
       );
     }
   }
@@ -1977,9 +2076,7 @@ export class Web3Client {
   async signMessage(message: string, privateKey?: string): Promise<string> {
     const key = privateKey || this.config.privateKey;
     if (!key) {
-      throw new Error(
-        "私钥未提供，请在参数中提供 privateKey 或在配置中设置 privateKey",
-      );
+      throw new Error($t("errors.privateKeyRequired"));
     }
 
     try {
@@ -1993,9 +2090,9 @@ export class Web3Client {
       return signature;
     } catch (error) {
       throw new Error(
-        `签名消息失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.signMessageFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2021,9 +2118,9 @@ export class Web3Client {
       return isValid;
     } catch (error) {
       throw new Error(
-        `验证签名失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.verifySignatureFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2042,9 +2139,9 @@ export class Web3Client {
       return block.gasLimit.toString();
     } catch (error) {
       throw new Error(
-        `获取 Gas 限制失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBlockGasLimitFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2071,9 +2168,9 @@ export class Web3Client {
       };
     } catch (error) {
       throw new Error(
-        `获取费用数据失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getFeeDataFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2094,9 +2191,9 @@ export class Web3Client {
       return balances.map((balance) => balance.toString());
     } catch (error) {
       throw new Error(
-        `批量获取余额失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBalancesFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2120,9 +2217,9 @@ export class Web3Client {
       return block.transactions || [];
     } catch (error) {
       throw new Error(
-        `获取区块交易失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getBlockTransactionsFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2191,7 +2288,14 @@ export class Web3Client {
                 }
               } catch (error) {
                 // 忽略单个区块的错误，继续扫描
-                console.warn(`扫描区块 ${i} 失败:`, error);
+                console.warn(
+                  $t("warnings.scanBlockFailed", {
+                    index: String(i),
+                    error: error instanceof Error
+                      ? error.message
+                      : String(error),
+                  }),
+                );
               }
             })(),
           );
@@ -2209,7 +2313,11 @@ export class Web3Client {
         // 这里先跳过，因为需要知道哪些合约可能包含该地址的事件
       } catch (error) {
         // 日志查询失败不影响主要结果
-        console.warn("查询地址相关日志失败:", error);
+        console.warn(
+          $t("warnings.queryAddressLogsFailed", {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
       }
 
       // 按区块号和时间戳排序（从新到旧）
@@ -2222,9 +2330,9 @@ export class Web3Client {
       return transactions;
     } catch (error) {
       throw new Error(
-        `获取地址交易历史失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getAddressTransactionHistoryFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2360,16 +2468,24 @@ export class Web3Client {
                             } catch (decodeError) {
                               // 解码失败，忽略参数（可能是数据格式问题）
                               console.warn(
-                                `解码交易参数失败 ${txObj.hash}:`,
-                                decodeError,
+                                $t("warnings.decodeTxParamsFailed", {
+                                  hash: txObj.hash,
+                                  error: decodeError instanceof Error
+                                    ? decodeError.message
+                                    : String(decodeError),
+                                }),
                               );
                             }
                           }
                         } catch (error) {
                           // 解析失败，忽略参数
                           console.warn(
-                            `解析交易参数失败 ${txObj.hash}:`,
-                            error,
+                            $t("warnings.parseTxParamsFailed", {
+                              hash: txObj.hash,
+                              error: error instanceof Error
+                                ? error.message
+                                : String(error),
+                            }),
                           );
                         }
                       }
@@ -2406,7 +2522,12 @@ export class Web3Client {
                   return; // 跳过这个区块的处理
                 }
                 // 其他错误才记录警告
-                console.warn(`扫描区块 ${i} 失败:`, error);
+                console.warn(
+                  $t("warnings.scanBlockFailed", {
+                    index: String(i),
+                    error: errorMessage,
+                  }),
+                );
               }
             })(),
           );
@@ -2448,9 +2569,9 @@ export class Web3Client {
       };
     } catch (error) {
       throw new Error(
-        `扫描合约方法交易失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.scanContractMethodTransactionsFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2474,9 +2595,9 @@ export class Web3Client {
       return code || "0x";
     } catch (error) {
       throw new Error(
-        `获取合约代码失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.getContractCodeFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2490,9 +2611,9 @@ export class Web3Client {
       return code !== undefined && code !== "0x" && code.length > 2;
     } catch (error) {
       throw new Error(
-        `检查合约地址失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("errors.checkContractAddressFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       );
     }
   }
@@ -2631,7 +2752,7 @@ export class Web3Manager {
     if (!client) {
       const config = this.configs.get(name) || this.defaultConfig;
       if (!config) {
-        throw new Error(`未找到名为 "${name}" 的 Web3 配置`);
+        throw new Error($t("errors.configNotFound", { name }));
       }
       client = new Web3Client(config);
       this.clients.set(name, client);

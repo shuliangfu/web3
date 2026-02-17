@@ -79,8 +79,14 @@ export * from "../src/client/mod.ts";
 `;
 
 // 为完整版和压缩版都生成类型声明
-await Deno.writeTextFile(resolve(ROOT, "dist/web3-client.esm.d.ts"), dtsContent);
-await Deno.writeTextFile(resolve(ROOT, "dist/web3-client.esm.min.d.ts"), dtsContent);
+await Deno.writeTextFile(
+  resolve(ROOT, "dist/web3-client.esm.d.ts"),
+  dtsContent,
+);
+await Deno.writeTextFile(
+  resolve(ROOT, "dist/web3-client.esm.min.d.ts"),
+  dtsContent,
+);
 
 console.log("[build-browser] ✅ dist/web3-client.esm.d.ts");
 console.log("[build-browser] ✅ dist/web3-client.esm.min.d.ts");
