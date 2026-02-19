@@ -1,18 +1,10 @@
 /**
- * 客户端 Web3 操作辅助类
- * 提供客户端 Web3 相关的操作功能，如钱包连接、合约交互等
+ * @module @dreamer/web3/client
  *
- * 环境兼容性：
- * - 仅支持客户端（浏览器环境）
- * - 需要钱包扩展（如 MetaMask）
- * - 不需要 RPC URL，直接使用钱包提供的 RPC
- *
- * API 使用说明：
- * - 本实现使用现代的 EIP-1193 标准（window.ethereum.request()）
- * - 使用 viem 库来与钱包和区块链交互
- *
- * 依赖：
- * - 需要安装 viem: npm:viem@^2.43.5
+ * Browser Web3 client. This module defines **Web3Client** (wallet connection via
+ * EIP-1193, contract read/call, chain/account events), **createWeb3Client**,
+ * and types (Web3Config, ContractConfig, ExtendedTransactionReceipt, etc.).
+ * No RPC URL required; uses window.ethereum. Use with viem (bundled or external).
  */
 
 // 导入 viem 核心模块

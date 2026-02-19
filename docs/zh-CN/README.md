@@ -591,20 +591,21 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 🌐 客户端支持（浏览器）
 
-- **默认入口**：`jsr:@dreamer/web3/client` — 单文件 ESM 包（含 viem）。体积约
-  294 KB（minified），开启 Brotli 后实际传输约 **70 KB**，可直接使用。
-- **更小体积**：`jsr:@dreamer/web3/client/external` — API 相同，但**不打包
-  viem**（本包约 **12–13 KB** minified，Brotli 后更小）；需通过 import map
-  或自己的打包工具提供 `viem`，运行时才能解析。适用于已依赖 viem 或希望
-  进一步减少首包体积的场景。
+- **推荐入口**：`jsr:@dreamer/web3/client` — TypeScript 源码入口，由你在应用内
+  自行打包（Vite、esbuild 等），类型与 tree-shaking 最佳。
+- **预构建完整包**：`jsr:@dreamer/web3/client/bundle` — 单文件 ESM 包（含
+  viem），约 294 KB（minified），Brotli 后约 **70 KB**，不自行打包时可直接使用。
+- **预构建小体积包**：`jsr:@dreamer/web3/client/bundle/external` — API 相同，但
+  **不打包 viem**（本包约 **12–13 KB** minified）；需通过 import map 或打包工具
+  提供 `viem`。
 
-  浏览器 import map 示例：
+  浏览器 import map 示例（预构建 external）：
 
   ```json
   {
     "imports": {
       "viem": "https://esm.sh/viem@2",
-      "jsr:@dreamer/web3/client/external": "https://esm.sh/jsr/@dreamer/web3/client/external"
+      "jsr:@dreamer/web3/client/bundle/external": "https://esm.sh/jsr/@dreamer/web3/client/bundle/external"
     }
   }
   ```
@@ -629,9 +630,9 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**v1.0.8**（2026-02-19）：**文档** – 客户端体积说明：约 294
-KB（minified），Brotli 约 70 KB；external 约 12–13 KB。详见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.9**（2026-02-20）：**变更** – 依赖升级；i18n
+自动初始化；客户端入口调整（./client 为 TS 源码，./client/bundle 与
+./client/bundle/external 为预构建包）。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

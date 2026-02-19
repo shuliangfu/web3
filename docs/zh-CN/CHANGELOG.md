@@ -7,6 +7,23 @@
 
 ---
 
+## [1.0.9] - 2026-02-20
+
+### 变更
+
+- **依赖**：将 `@dreamer/runtime-adapter` 升级为 `^1.0.15`，`@dreamer/service`
+  升级为 `^1.0.2`，`@dreamer/test` 升级为 `^1.0.12`。
+- **i18n**：`initWeb3I18n()` 不再导出；i18n
+  在模块加载时自动初始化，调用方无需再在 `$tr()` 前调用 `initWeb3I18n()`。
+- **客户端入口**：`./client` 改为指向 TypeScript
+  源码（`./src/client/mod.ts`），预构建包移至 `./client/bundle` 与
+  `./client/bundle/external`。原先使用 `jsr:@dreamer/web3/client/external`
+  的请改为 `jsr:@dreamer/web3/client/bundle/external`。
+- **文档**：README 与 docs/zh-CN/README.md 已按新入口更新；client
+  子文档增加「入口路径」说明；主入口与 client 入口补充 `@module` 模块说明。
+
+---
+
 ## [1.0.8] - 2026-02-19
 
 ### 文档

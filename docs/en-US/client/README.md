@@ -14,6 +14,16 @@ via the user’s wallet.
 
 ---
 
+## Entrypoints
+
+| Path                                       | Description                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| `jsr:@dreamer/web3/client`                 | TypeScript source (recommended); bundle in your app.                       |
+| `jsr:@dreamer/web3/client/bundle`          | Pre-built ESM bundle including viem (~294 KB minified).                    |
+| `jsr:@dreamer/web3/client/bundle/external` | Pre-built ESM with viem external (~12–13 KB); provide viem via import map. |
+
+---
+
 ## Installation
 
 ### Deno

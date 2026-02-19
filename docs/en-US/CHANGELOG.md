@@ -8,6 +8,27 @@ and this project adheres to
 
 ---
 
+## [1.0.9] - 2026-02-20
+
+### Changed
+
+- **Dependencies**: Bump `@dreamer/runtime-adapter` to `^1.0.15`,
+  `@dreamer/service` to `^1.0.2`, `@dreamer/test` to `^1.0.12`.
+- **i18n**: `initWeb3I18n()` is no longer exported; i18n initializes
+  automatically on module load. Callers no longer need to call `initWeb3I18n()`
+  before using `$tr()`.
+- **Client entrypoints**: `./client` now points to TypeScript source
+  (`./src/client/mod.ts`) for better type-checking; pre-built bundles moved to
+  `./client/bundle` and `./client/bundle/external`. Update imports from
+  `jsr:@dreamer/web3/client/external` to
+  `jsr:@dreamer/web3/client/bundle/external` for the smaller pre-built bundle.
+- **Docs**: README and docs/zh-CN/README.md updated for new client entrypoints;
+  added Entrypoints section in docs/en-US/client/README.md and
+  docs/zh-CN/client/README.md. Module doc (`@module`) added to main and client
+  entrypoints.
+
+---
+
 ## [1.0.8] - 2026-02-19
 
 ### Documentation
