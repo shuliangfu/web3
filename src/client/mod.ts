@@ -38,12 +38,9 @@ import {
   findMatchingFunction,
   formatAddressArgs,
   getErrorMessage,
-} from "../utils.ts";
-// 内部合约代理（不通过 exports 暴露）
-import {
-  buildContractsProxy,
-  type ContractsProxy,
-} from "../internal/contract-proxy.ts";
+} from "./utils.ts";
+// 客户端专用合约代理（无服务端 i18n，与 internal/contract-proxy 逻辑分离）
+import { buildContractsProxy, type ContractsProxy } from "./contract-proxy.ts";
 
 /**
  * 扩展 Window 接口以支持 ethereum
@@ -181,7 +178,7 @@ export class Web3Client {
    */
   constructor(config: Web3Config = {}) {
     this.config = config;
-    // 初始化合约代理对象（使用 internal 的 buildContractsProxy）
+    // 初始化合约代理对象（使用客户端专用 buildContractsProxy，无 i18n）
     this.contracts = buildContractsProxy(this, config.contracts);
   }
 

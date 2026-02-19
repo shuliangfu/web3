@@ -589,9 +589,28 @@ const balance = await ethClient.getBalance("0x...");
 
 ---
 
-## 🌐 客户端支持
+## 🌐 客户端支持（浏览器）
 
-客户端 Web3 支持请查看 [client/README.md](../../src/client/README.md)。
+- **默认入口**：`jsr:@dreamer/web3/client` — 单文件 ESM 包（含 viem），压缩后约
+  300 KB。
+- **更小体积**：`jsr:@dreamer/web3/client/external` — API 相同，但**不打包
+  viem**；需通过 import map 或自己的打包工具提供
+  `viem`，运行时才能解析。适用于已依赖 viem 或希望减少首包体积的场景。
+
+  浏览器 import map 示例：
+
+  ```json
+  {
+    "imports": {
+      "viem": "https://esm.sh/viem@2",
+      "jsr:@dreamer/web3/client/external": "https://esm.sh/jsr/@dreamer/web3/client/external"
+    }
+  }
+  ```
+
+  构建产物：`dist/web3-client.esm.min.js`（完整版）、`dist/web3-client.esm.external.min.js`（external
+  版），以及用于[体积分析](https://esbuild.github.io/analyze/)的
+  `dist/meta.json`。
 
 ---
 
@@ -609,12 +628,10 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**[1.0.6]** - 2026-02-18
-
-- **新增**：Web3Manager 与
-  ServiceContainer、readProperty、returnJson、i18n（zh-CN/en-US）、wssUrl、ExtendedTransactionReceipt。**变更**：returnJson
-  重命名、客户端 ESM 构建、Gas/收据处理。**修复**：fromWei/toWei
-  精度、重载匹配、区块扫描。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.7**（2026-02-19）：**新增** – 客户端导出 `./client/external`（viem
+外置，约 12 KB）；客户端工具与独立客户端合约代理（无 i18n）。**变更** – i18n
+`$t` → `$tr`；客户端构建压缩选项；README 客户端（浏览器）与中文文档。详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

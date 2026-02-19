@@ -50,7 +50,7 @@ import {
   type ContractsProxy,
 } from "./internal/contract-proxy.ts";
 import type { ServiceContainer } from "@dreamer/service";
-import { $t, initWeb3I18n } from "./i18n.ts";
+import { $tr, initWeb3I18n } from "./i18n.ts";
 
 initWeb3I18n();
 
@@ -244,7 +244,7 @@ export class Web3Client {
    */
   constructor(config: Web3Config) {
     if (!config.rpcUrl) {
-      throw new Error($t("errors.serverRpcRequired"));
+      throw new Error($tr("errors.serverRpcRequired"));
     }
     this.config = config;
     // 初始化合约代理对象（使用 internal 的 buildContractsProxy）
@@ -286,7 +286,7 @@ export class Web3Client {
 
     // 检查是否配置了 rpcUrl
     if (!this.config.rpcUrl) {
-      throw new Error($t("errors.rpcNotConfigured"));
+      throw new Error($tr("errors.rpcNotConfigured"));
     }
 
     // 使用 HTTP transport 创建 PublicClient
@@ -297,7 +297,7 @@ export class Web3Client {
       return this.publicClient;
     } catch (error) {
       throw new Error(
-        $t("errors.createPublicClientFailed", {
+        $tr("errors.createPublicClientFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -321,7 +321,7 @@ export class Web3Client {
 
     if (!wssUrl) {
       // 如果没有 WebSocket URL，回退到 HTTP client（不推荐，但兼容）
-      console.warn($t("warnings.wsNotConfigured"));
+      console.warn($tr("warnings.wsNotConfigured"));
       return this.getPublicClient();
     }
 
@@ -335,7 +335,7 @@ export class Web3Client {
       return this.wsClient;
     } catch (error) {
       console.warn(
-        $t("warnings.wsCreateFailed", {
+        $tr("warnings.wsCreateFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -356,13 +356,13 @@ export class Web3Client {
 
     // 检查是否配置了 rpcUrl 和 privateKey
     if (!this.config.rpcUrl || !this.config.privateKey) {
-      throw new Error($t("errors.rpcOrPrivateKeyNotConfigured"));
+      throw new Error($tr("errors.rpcOrPrivateKeyNotConfigured"));
     }
 
     // 注意：viem 的 WalletClient 主要用于浏览器钱包
     // 服务端环境需要使用 privateKey 创建账户，但 viem 的 WalletClient 不支持直接使用 privateKey
     // 这里抛出错误，提示用户使用其他方式（如直接使用 viem 的账户功能）
-    throw new Error($t("errors.serverNeedPrivateKey"));
+    throw new Error($tr("errors.serverNeedPrivateKey"));
   }
 
   /**
@@ -379,7 +379,7 @@ export class Web3Client {
       return balance.toString();
     } catch (error) {
       throw new Error(
-        $t("errors.getBalanceFailed", {
+        $tr("errors.getBalanceFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -400,7 +400,7 @@ export class Web3Client {
       return count;
     } catch (error) {
       throw new Error(
-        $t("errors.getTransactionCountFailed", {
+        $tr("errors.getTransactionCountFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -415,7 +415,7 @@ export class Web3Client {
   async sendTransaction(options: TransactionOptions): Promise<string> {
     // 检查是否配置了私钥
     if (!this.config.privateKey) {
-      throw new Error($t("errors.privateKeyNotConfigured"));
+      throw new Error($tr("errors.privateKeyNotConfigured"));
     }
 
     try {
@@ -467,7 +467,7 @@ export class Web3Client {
         } catch (error) {
           // 如果获取失败，使用默认值
           console.warn(
-            $t("warnings.getGasPriceFallback", {
+            $tr("warnings.getGasPriceFallback", {
               error: error instanceof Error ? error.message : String(error),
             }),
           );
@@ -505,7 +505,7 @@ export class Web3Client {
       return hash;
     } catch (error) {
       throw new Error(
-        $t("errors.sendTransactionFailed", {
+        $tr("errors.sendTransactionFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -565,14 +565,14 @@ export class Web3Client {
   ): Promise<ExtendedTransactionReceipt | Hash> {
     // 检查是否配置了私钥
     if (!this.config.privateKey) {
-      throw new Error($t("errors.privateKeyNotConfigured"));
+      throw new Error($tr("errors.privateKeyNotConfigured"));
     }
 
     try {
       // 从配置或选项中获取合约地址
       const contractAddress = options.address || this.config.address;
       if (!contractAddress) {
-        throw new Error($t("errors.contractAddressRequired"));
+        throw new Error($tr("errors.contractAddressRequired"));
       }
 
       let parsedAbi: Abi;
@@ -676,7 +676,7 @@ export class Web3Client {
       } catch (error) {
         // 如果获取失败，使用默认值
         console.warn(
-          $t("warnings.getGasPriceFallback", {
+          $tr("warnings.getGasPriceFallback", {
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -707,13 +707,13 @@ export class Web3Client {
             // 如果是执行 revert，直接抛出错误，不要发送交易
             // 因为交易发送后也会 revert，浪费 gas
             throw new Error(
-              $t("errors.contractExecuteWillFail", { error: errorMessage }),
+              $tr("errors.contractExecuteWillFail", { error: errorMessage }),
             );
           }
 
           // 其他 Gas 估算失败（例如网络问题），使用默认值
           console.warn(
-            $t("warnings.estimateGasFallback", {
+            $tr("warnings.estimateGasFallback", {
               error: error instanceof Error ? error.message : String(error),
             }),
           );
@@ -780,9 +780,11 @@ export class Web3Client {
         errorMessage.includes("用户取消") ||
         errorMessage.includes("用户拒绝")
       ) {
-        throw new Error($t("errors.transactionCancelled"));
+        throw new Error($tr("errors.transactionCancelled"));
       }
-      throw new Error($t("errors.callContractFailed", { error: errorMessage }));
+      throw new Error(
+        $tr("errors.callContractFailed", { error: errorMessage }),
+      );
     }
   }
 
@@ -849,7 +851,7 @@ export class Web3Client {
     // 从配置或选项中获取合约地址（在 try 块外定义，以便在 catch 中使用）
     const contractAddress = options.address || this.config.address;
     if (!contractAddress) {
-      throw new Error($t("errors.contractAddressRequired"));
+      throw new Error($tr("errors.contractAddressRequired"));
     }
 
     try {
@@ -970,7 +972,7 @@ export class Web3Client {
         errorMessage.includes("BAD_DATA")
       ) {
         throw new Error(
-          $t("errors.readContractRevertReasons", {
+          $tr("errors.readContractRevertReasons", {
             contractAddress,
             functionName: options.functionName,
             args: JSON.stringify(options.args),
@@ -978,7 +980,9 @@ export class Web3Client {
           }),
         );
       }
-      throw new Error($t("errors.readContractFailed", { error: errorMessage }));
+      throw new Error(
+        $tr("errors.readContractFailed", { error: errorMessage }),
+      );
     }
   }
 
@@ -993,7 +997,7 @@ export class Web3Client {
       return gasPrice.toString();
     } catch (error) {
       throw new Error(
-        $t("errors.getGasPriceFailed", {
+        $tr("errors.getGasPriceFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1017,7 +1021,7 @@ export class Web3Client {
       return gasEstimate.toString();
     } catch (error) {
       throw new Error(
-        $t("errors.estimateGasFailed", {
+        $tr("errors.estimateGasFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1038,7 +1042,7 @@ export class Web3Client {
       return block;
     } catch (error) {
       throw new Error(
-        $t("errors.getBlockFailed", {
+        $tr("errors.getBlockFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1059,7 +1063,7 @@ export class Web3Client {
       return tx;
     } catch (error) {
       throw new Error(
-        $t("errors.getTransactionFailed", {
+        $tr("errors.getTransactionFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1189,7 +1193,7 @@ export class Web3Client {
                 await Promise.resolve(listener(blockNumber, block));
               } catch (error) {
                 console.error(
-                  $t("warnings.blockListenerError", {
+                  $tr("warnings.blockListenerError", {
                     error: error instanceof Error
                       ? error.message
                       : String(error),
@@ -1199,7 +1203,7 @@ export class Web3Client {
             }
           } catch (error) {
             console.error(
-              $t("warnings.processBlockFailed", {
+              $tr("warnings.processBlockFailed", {
                 error: error instanceof Error ? error.message : String(error),
               }),
             );
@@ -1209,7 +1213,7 @@ export class Web3Client {
         },
         onError: (error) => {
           console.error(
-            $t("warnings.blockListenError", {
+            $tr("warnings.blockListenError", {
               error: error instanceof Error ? error.message : String(error),
             }),
           );
@@ -1218,7 +1222,7 @@ export class Web3Client {
       });
     } catch (error) {
       console.error(
-        $t("warnings.startBlockListenFailed", {
+        $tr("warnings.startBlockListenFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1251,7 +1255,7 @@ export class Web3Client {
       this.blockReconnectAttempts = 0;
     } catch (error) {
       console.error(
-        $t("warnings.stopBlockListenFailed", {
+        $tr("warnings.stopBlockListenFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1272,7 +1276,7 @@ export class Web3Client {
   private handleBlockListenerError(): void {
     if (this.blockReconnectAttempts >= this.maxReconnectAttempts) {
       console.error(
-        $t("warnings.blockReconnectMaxReached", {
+        $tr("warnings.blockReconnectMaxReached", {
           max: String(this.maxReconnectAttempts),
         }),
       );
@@ -1307,7 +1311,7 @@ export class Web3Client {
         this.startBlockListener();
       } catch (error) {
         console.error(
-          $t("warnings.blockReconnectFailed", {
+          $tr("warnings.blockReconnectFailed", {
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -1369,7 +1373,7 @@ export class Web3Client {
                     await Promise.resolve(listener(txHash, tx));
                   } catch (error) {
                     console.error(
-                      $t("warnings.transactionListenerError", {
+                      $tr("warnings.transactionListenerError", {
                         error: error instanceof Error
                           ? error.message
                           : String(error),
@@ -1379,7 +1383,7 @@ export class Web3Client {
                 }
               } catch (error) {
                 console.error(
-                  $t("warnings.getTransactionInfoFailed", {
+                  $tr("warnings.getTransactionInfoFailed", {
                     error: error instanceof Error
                       ? error.message
                       : String(error),
@@ -1389,7 +1393,7 @@ export class Web3Client {
             }
           } catch (error) {
             console.error(
-              $t("warnings.processTransactionFailed", {
+              $tr("warnings.processTransactionFailed", {
                 error: error instanceof Error ? error.message : String(error),
               }),
             );
@@ -1399,7 +1403,7 @@ export class Web3Client {
         },
         onError: (error) => {
           console.error(
-            $t("warnings.transactionListenError", {
+            $tr("warnings.transactionListenError", {
               error: error instanceof Error ? error.message : String(error),
             }),
           );
@@ -1408,7 +1412,7 @@ export class Web3Client {
       });
     } catch (error) {
       console.error(
-        $t("warnings.startTransactionListenFailed", {
+        $tr("warnings.startTransactionListenFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1423,7 +1427,7 @@ export class Web3Client {
   private handleTransactionListenerError(): void {
     if (this.transactionReconnectAttempts >= this.maxReconnectAttempts) {
       console.error(
-        $t("warnings.transactionReconnectMaxReached", {
+        $tr("warnings.transactionReconnectMaxReached", {
           max: String(this.maxReconnectAttempts),
         }),
       );
@@ -1458,7 +1462,7 @@ export class Web3Client {
         this.startTransactionListener();
       } catch (error) {
         console.error(
-          $t("warnings.transactionReconnectFailed", {
+          $tr("warnings.transactionReconnectFailed", {
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -1491,7 +1495,7 @@ export class Web3Client {
       this.transactionReconnectAttempts = 0;
     } catch (error) {
       console.error(
-        $t("warnings.stopTransactionListenFailed", {
+        $tr("warnings.stopTransactionListenFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1564,7 +1568,7 @@ export class Web3Client {
         options.abi,
       ).catch((error) => {
         console.error(
-          $t("warnings.scanContractEventsFailedLog", {
+          $tr("warnings.scanContractEventsFailedLog", {
             contractAddress,
             eventName,
             error: error instanceof Error ? error.message : String(error),
@@ -1653,7 +1657,7 @@ export class Web3Client {
           await Promise.resolve(callback(log));
         } catch (error) {
           console.warn(
-            $t("warnings.parseHistoryEventFailed", {
+            $tr("warnings.parseHistoryEventFailed", {
               contractAddress,
               eventName,
               error: error instanceof Error ? error.message : String(error),
@@ -1663,7 +1667,7 @@ export class Web3Client {
       }
     } catch (error) {
       throw new Error(
-        $t("errors.scanContractEventsFailed", {
+        $tr("errors.scanContractEventsFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -1714,7 +1718,7 @@ export class Web3Client {
                     await Promise.resolve(listener(log));
                   } catch (error) {
                     console.error(
-                      $t("warnings.contractEventListenerError", {
+                      $tr("warnings.contractEventListenerError", {
                         error: error instanceof Error
                           ? error.message
                           : String(error),
@@ -1725,7 +1729,7 @@ export class Web3Client {
               }
             } catch (error) {
               console.error(
-                $t("warnings.processContractEventFailed", {
+                $tr("warnings.processContractEventFailed", {
                   error: error instanceof Error ? error.message : String(error),
                 }),
               );
@@ -1736,7 +1740,7 @@ export class Web3Client {
         },
         onError: (error) => {
           console.error(
-            $t("warnings.contractEventListenError", {
+            $tr("warnings.contractEventListenError", {
               error: error instanceof Error ? error.message : String(error),
             }),
           );
@@ -1748,7 +1752,7 @@ export class Web3Client {
       this.contractWatchUnsubscribes.set(key, unsubscribe);
     } catch (error) {
       console.error(
-        $t("warnings.startContractEventListenFailed", {
+        $tr("warnings.startContractEventListenFailed", {
           contractAddress,
           eventName,
           error: error instanceof Error ? error.message : String(error),
@@ -1770,7 +1774,7 @@ export class Web3Client {
 
     if (attempts >= this.maxReconnectAttempts) {
       console.error(
-        $t("warnings.contractEventReconnectMaxReached", {
+        $tr("warnings.contractEventReconnectMaxReached", {
           max: String(this.maxReconnectAttempts),
           key,
         }),
@@ -1814,7 +1818,7 @@ export class Web3Client {
         this.startContractEventListener(contractAddress, eventName, abi);
       } catch (error) {
         console.error(
-          $t("warnings.contractEventReconnectFailed", {
+          $tr("warnings.contractEventReconnectFailed", {
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -1857,7 +1861,7 @@ export class Web3Client {
       }
     } catch (error) {
       console.error(
-        $t("warnings.stopContractEventListenFailed", {
+        $tr("warnings.stopContractEventListenFailed", {
           contractAddress,
           eventName,
           error: error instanceof Error ? error.message : String(error),
@@ -2010,7 +2014,7 @@ export class Web3Client {
       return Number(blockNumber);
     } catch (error) {
       throw new Error(
-        $t("errors.getBlockNumberFailed", {
+        $tr("errors.getBlockNumberFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2053,7 +2057,7 @@ export class Web3Client {
         ? error.message
         : String(error);
       throw new Error(
-        $t("errors.getNetworkInfoFailed", { error: errorMessage }),
+        $tr("errors.getNetworkInfoFailed", { error: errorMessage }),
       );
     }
   }
@@ -2076,7 +2080,7 @@ export class Web3Client {
   async signMessage(message: string, privateKey?: string): Promise<string> {
     const key = privateKey || this.config.privateKey;
     if (!key) {
-      throw new Error($t("errors.privateKeyRequired"));
+      throw new Error($tr("errors.privateKeyRequired"));
     }
 
     try {
@@ -2090,7 +2094,7 @@ export class Web3Client {
       return signature;
     } catch (error) {
       throw new Error(
-        $t("errors.signMessageFailed", {
+        $tr("errors.signMessageFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2118,7 +2122,7 @@ export class Web3Client {
       return isValid;
     } catch (error) {
       throw new Error(
-        $t("errors.verifySignatureFailed", {
+        $tr("errors.verifySignatureFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2139,7 +2143,7 @@ export class Web3Client {
       return block.gasLimit.toString();
     } catch (error) {
       throw new Error(
-        $t("errors.getBlockGasLimitFailed", {
+        $tr("errors.getBlockGasLimitFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2168,7 +2172,7 @@ export class Web3Client {
       };
     } catch (error) {
       throw new Error(
-        $t("errors.getFeeDataFailed", {
+        $tr("errors.getFeeDataFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2191,7 +2195,7 @@ export class Web3Client {
       return balances.map((balance) => balance.toString());
     } catch (error) {
       throw new Error(
-        $t("errors.getBalancesFailed", {
+        $tr("errors.getBalancesFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2217,7 +2221,7 @@ export class Web3Client {
       return block.transactions || [];
     } catch (error) {
       throw new Error(
-        $t("errors.getBlockTransactionsFailed", {
+        $tr("errors.getBlockTransactionsFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2289,7 +2293,7 @@ export class Web3Client {
               } catch (error) {
                 // 忽略单个区块的错误，继续扫描
                 console.warn(
-                  $t("warnings.scanBlockFailed", {
+                  $tr("warnings.scanBlockFailed", {
                     index: String(i),
                     error: error instanceof Error
                       ? error.message
@@ -2314,7 +2318,7 @@ export class Web3Client {
       } catch (error) {
         // 日志查询失败不影响主要结果
         console.warn(
-          $t("warnings.queryAddressLogsFailed", {
+          $tr("warnings.queryAddressLogsFailed", {
             error: error instanceof Error ? error.message : String(error),
           }),
         );
@@ -2330,7 +2334,7 @@ export class Web3Client {
       return transactions;
     } catch (error) {
       throw new Error(
-        $t("errors.getAddressTransactionHistoryFailed", {
+        $tr("errors.getAddressTransactionHistoryFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2468,7 +2472,7 @@ export class Web3Client {
                             } catch (decodeError) {
                               // 解码失败，忽略参数（可能是数据格式问题）
                               console.warn(
-                                $t("warnings.decodeTxParamsFailed", {
+                                $tr("warnings.decodeTxParamsFailed", {
                                   hash: txObj.hash,
                                   error: decodeError instanceof Error
                                     ? decodeError.message
@@ -2480,7 +2484,7 @@ export class Web3Client {
                         } catch (error) {
                           // 解析失败，忽略参数
                           console.warn(
-                            $t("warnings.parseTxParamsFailed", {
+                            $tr("warnings.parseTxParamsFailed", {
                               hash: txObj.hash,
                               error: error instanceof Error
                                 ? error.message
@@ -2523,7 +2527,7 @@ export class Web3Client {
                 }
                 // 其他错误才记录警告
                 console.warn(
-                  $t("warnings.scanBlockFailed", {
+                  $tr("warnings.scanBlockFailed", {
                     index: String(i),
                     error: errorMessage,
                   }),
@@ -2569,7 +2573,7 @@ export class Web3Client {
       };
     } catch (error) {
       throw new Error(
-        $t("errors.scanContractMethodTransactionsFailed", {
+        $tr("errors.scanContractMethodTransactionsFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2595,7 +2599,7 @@ export class Web3Client {
       return code || "0x";
     } catch (error) {
       throw new Error(
-        $t("errors.getContractCodeFailed", {
+        $tr("errors.getContractCodeFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2611,7 +2615,7 @@ export class Web3Client {
       return code !== undefined && code !== "0x" && code.length > 2;
     } catch (error) {
       throw new Error(
-        $t("errors.checkContractAddressFailed", {
+        $tr("errors.checkContractAddressFailed", {
           error: error instanceof Error ? error.message : String(error),
         }),
       );
@@ -2752,7 +2756,7 @@ export class Web3Manager {
     if (!client) {
       const config = this.configs.get(name) || this.defaultConfig;
       if (!config) {
-        throw new Error($t("errors.configNotFound", { name }));
+        throw new Error($tr("errors.configNotFound", { name }));
       }
       client = new Web3Client(config);
       this.clients.set(name, client);
