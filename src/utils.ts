@@ -22,7 +22,7 @@ import {
 } from "viem";
 // 导入 viem 账户模块（用于生成钱包）
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { $t } from "./i18n.ts";
+import { $tr } from "./i18n.ts";
 
 // ==================== 内部工具（供 mod / client 使用，不对外 re-export） ====================
 
@@ -162,7 +162,7 @@ export function fromWei(
   const unitMultiplier = UNIT_MAP[unit.toLowerCase()];
 
   if (!unitMultiplier) {
-    throw new Error($t("errors.unknownUnit", { unit }));
+    throw new Error($tr("errors.unknownUnit", { unit }));
   }
 
   // 使用 BigInt 进行精确的整数除法
@@ -214,7 +214,7 @@ export function toWei(value: string | number, unit: string = "ether"): string {
   const unitMultiplier = UNIT_MAP[unit.toLowerCase()];
 
   if (!unitMultiplier) {
-    throw new Error($t("errors.unknownUnit", { unit }));
+    throw new Error($tr("errors.unknownUnit", { unit }));
   }
 
   // 将输入值转换为字符串进行处理，避免精度丢失
@@ -351,7 +351,7 @@ export function checkAddressChecksum(address: string): boolean {
 export function toChecksumAddress(address: string): string {
   // 先使用我们自己的 isAddress 验证
   if (!isAddress(address)) {
-    throw new Error($t("errors.invalidAddress", { address }));
+    throw new Error($tr("errors.invalidAddress", { address }));
   }
 
   // 移除 0x 前缀并转为小写
@@ -628,7 +628,7 @@ export function isTxHash(txHash: string): boolean {
 export function formatAddress(address: string): string {
   // 先使用我们自己的 isAddress 验证
   if (!isAddress(address)) {
-    throw new Error($t("errors.invalidAddress", { address }));
+    throw new Error($tr("errors.invalidAddress", { address }));
   }
 
   // 确保有 0x 前缀，转换为小写（viem 的 getAddress 需要小写地址）
@@ -707,7 +707,7 @@ export async function getCode(
   rpcUrl?: string,
 ): Promise<string> {
   if (!viemIsAddress(address)) {
-    throw new Error($t("errors.invalidAddress", { address }));
+    throw new Error($tr("errors.invalidAddress", { address }));
   }
 
   const formattedAddress = formatAddress(address);
@@ -724,7 +724,7 @@ export async function getCode(
   }
 
   // 如果没有提供 rpcUrl，抛出错误
-  throw new Error($t("errors.getCodeRpcRequired"));
+  throw new Error($tr("errors.getCodeRpcRequired"));
 }
 
 /**
@@ -737,7 +737,7 @@ export async function getCode(
  */
 export function getFunctionSelector(functionSignature: string): string {
   if (!functionSignature || typeof functionSignature !== "string") {
-    throw new Error($t("errors.functionSignatureEmpty"));
+    throw new Error($tr("errors.functionSignatureEmpty"));
   }
 
   // 计算函数签名的 Keccak-256 哈希
@@ -762,7 +762,7 @@ export function encodeFunctionCall(
   args: unknown[] = [],
 ): string {
   if (!functionSignature || typeof functionSignature !== "string") {
-    throw new Error($t("errors.functionSignatureEmpty"));
+    throw new Error($tr("errors.functionSignatureEmpty"));
   }
 
   try {
@@ -782,7 +782,7 @@ export function encodeFunctionCall(
     });
   } catch (error) {
     throw new Error(
-      $t("errors.encodeFunctionCallFailed", {
+      $tr("errors.encodeFunctionCallFailed", {
         error: error instanceof Error ? error.message : String(error),
       }),
     );

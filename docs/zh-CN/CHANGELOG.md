@@ -5,6 +5,35 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+---
+
+## [1.0.7] - 2026-02-19
+
+### 新增
+
+- **客户端（浏览器）**：
+  - 新导出 `./client/external`：**viem 外置**的 ESM 包（约 12 KB 压缩）；配合
+    import map 或由 bundler 提供 `viem` 可减小体积。
+  - 构建产物：`dist/web3-client.esm.min.js`（完整）、
+    `dist/web3-client.esm.external.min.js`（external）、`dist/meta.json`
+    用于[体积分析](https://esbuild.github.io/analyze/)。
+- **客户端工具**：在 `client/utils.ts` 中新增
+  `getErrorMessage`、`asViemAbi`、`formatAddressArgs`、`findMatchingFunction`（自服务端
+  utils 复制），客户端不再依赖服务端 utils。
+- **客户端合约代理**：独立实现 `client/contract-proxy.ts`（无 i18n）；服务端
+  继续使用带 i18n 的 `internal/contract-proxy.ts`。
+
+### 变更
+
+- **i18n**：翻译方法由 `$t` 重命名为 `$tr`，避免与全局 `$t`
+  冲突。请将现有代码中本包消息改为使用 `$tr`。
+- **客户端构建**：压缩构建使用 `legalComments: "none"` 与 `drop: ["debugger"]`
+  以减小体积；`deno.json` 新增导出 `"./client/external"`。
+- **文档**：README「Client (browser)」小节补充默认入口、更小体积（external）及
+  import map 示例；`docs/zh-CN/README.md` 已同步更新。
+
+---
+
 ## [1.0.6] - 2026-02-18
 
 ### 新增

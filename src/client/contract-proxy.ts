@@ -1,14 +1,13 @@
 /**
- * 合约代理模块（内部使用，不通过 deno.json exports 暴露）
- * 供服务端 mod 使用，含 i18n（$tr）。客户端请使用 client/contract-proxy.ts（无 i18n，避免打包服务端与翻译）
+ * 客户端专用合约代理模块
+ * 与 internal/contract-proxy 逻辑一致，但不依赖服务端 i18n（$tr），避免客户端打包带入翻译与服务端代码
  */
 
 import type { Abi } from "viem";
-import { $tr } from "../i18n.ts";
 
 /**
  * Web3 客户端最小接口，供 ContractProxy 使用
- * 仅依赖 readContract、callContract，使服务端/客户端 Web3Client 均可复用
+ * 仅依赖 readContract、callContract，使客户端 Web3Client 可复用
  */
 export interface IWeb3ClientForProxy {
   readContract(opts: {
@@ -30,7 +29,7 @@ export interface IWeb3ClientForProxy {
 
 /**
  * 合约配置的最小形状，用于 buildContractsProxy
- * 与 mod/client 的 ContractConfig 兼容
+ * 与 client 的 ContractConfig 兼容
  */
 export interface ContractConfigForProxy {
   name: string;
@@ -39,7 +38,7 @@ export interface ContractConfigForProxy {
 }
 
 /**
- * 合约代理类
+ * 合约代理类（客户端用，无 i18n）
  * 提供通过合约名称访问合约的代理功能，仅依赖 IWeb3ClientForProxy
  */
 export class ContractProxy {
@@ -80,13 +79,8 @@ export class ContractProxy {
    * Solidity 的公有状态变量会自动生成 getter 函数，此方法用于调用这些 getter
    * @param propertyName 属性名（对应 Solidity 中的公有状态变量名）
    * @returns 属性值
-   *
-   * @example
-   * // 假设合约有：uint256 public totalSupply;
-   * const totalSupply = await contract.readProperty('totalSupply');
    */
   async readProperty(propertyName: string): Promise<unknown> {
-    // 公有属性的 getter 函数名就是属性名本身，无参数
     return await this.readContract(propertyName);
   }
 
@@ -140,7 +134,7 @@ export type ContractsProxy = {
 };
 
 /**
- * 根据合约配置构建 contracts 代理对象
+ * 根据合约配置构建 contracts 代理对象（客户端用，错误文案为英文，无 i18n）
  * @param client 满足 IWeb3ClientForProxy 的 Web3 客户端（如 Web3Client）
  * @param contracts 单个合约配置、合约配置数组，或 undefined
  * @returns ContractsProxy，无合约时返回空对象
@@ -159,18 +153,16 @@ export function buildContractsProxy(
   const list = Array.isArray(contracts) ? contracts : [contracts];
   for (const contract of list) {
     if (!contract.name) {
-      throw new Error($tr("errors.contractNameRequired"));
+      throw new Error("Contract name is required.");
     }
     if (!contract.address) {
       throw new Error(
-        $tr("errors.contractAddressFieldRequired", {
-          contractName: contract.name,
-        }),
+        `Contract "${contract.name}" must have an "address" field.`,
       );
     }
     if (!contract.abi) {
       throw new Error(
-        $tr("errors.contractAbiFieldRequired", { contractName: contract.name }),
+        `Contract "${contract.name}" must have an "abi" field.`,
       );
     }
     contractsProxy[contract.name] = new ContractProxy(client, contract);

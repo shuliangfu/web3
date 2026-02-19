@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [1.0.7] - 2026-02-19
+
+### Added
+
+- **Client (browser)**:
+  - New export `./client/external`: ESM bundle with **viem external** (~12 KB
+    minified); use with import map or bundler-provided `viem` for smaller
+    payload.
+  - Build outputs: `dist/web3-client.esm.min.js` (full),
+    `dist/web3-client.esm.external.min.js` (external), `dist/meta.json` for
+    [bundle analysis](https://esbuild.github.io/analyze/).
+- **Client utils**: `getErrorMessage`, `asViemAbi`, `formatAddressArgs`,
+  `findMatchingFunction` added in `client/utils.ts` (from server utils) so
+  client does not depend on server utils.
+- **Client contract proxy**: Dedicated `client/contract-proxy.ts` (no i18n);
+  server keeps `internal/contract-proxy.ts` with i18n.
+
+### Changed
+
+- **i18n**: Renamed translation method from `$t` to `$tr` to avoid conflict with
+  global `$t`. Update existing code to use `$tr` for package messages.
+- **Client build**: Minified build uses `legalComments: "none"` and
+  `drop: ["debugger"]` to reduce size; `deno.json` exports
+  `"./client/external"`.
+- **Docs**: README “Client (browser)” section documents default entry, smaller
+  bundle (external), and import map example; `docs/zh-CN/README.md` updated
+  accordingly.
+
+---
+
 ## [1.0.6] - 2026-02-18
 
 ### Added

@@ -2,14 +2,13 @@
  * @module @dreamer/web3/i18n
  *
  * i18n for @dreamer/web3: error and warning messages.
- * When lang is not passed, locale is auto-detected from env
- * (LANGUAGE/LC_ALL/LANG).
+ * Uses $tr + module instance, no install(); locale auto-detected from env
+ * (LANGUAGE/LC_ALL/LANG) when not set.
  */
 
 import {
-  $i18n,
-  getGlobalI18n,
-  getI18n,
+  createI18n,
+  type I18n,
   type TranslationData,
   type TranslationParams,
 } from "@dreamer/i18n";
@@ -25,7 +24,13 @@ export const DEFAULT_LOCALE: Locale = "en-US";
 
 const WEB3_LOCALES: Locale[] = ["en-US", "zh-CN"];
 
-let web3TranslationsLoaded = false;
+const LOCALE_DATA: Record<string, TranslationData> = {
+  "en-US": enUS as TranslationData,
+  "zh-CN": zhCN as TranslationData,
+};
+
+/** Module-scoped i18n instance for web3; not installed globally. */
+let web3I18n: I18n | null = null;
 
 /**
  * Detect locale: LANGUAGE > LC_ALL > LANG.
@@ -50,41 +55,39 @@ export function detectLocale(): Locale {
 }
 
 /**
- * Load web3 translations into the current I18n instance (once).
- */
-export function ensureWeb3I18n(): void {
-  if (web3TranslationsLoaded) return;
-  const i18n = getGlobalI18n() ?? getI18n();
-  i18n.loadTranslations("en-US", enUS as TranslationData);
-  i18n.loadTranslations("zh-CN", zhCN as TranslationData);
-  web3TranslationsLoaded = true;
-}
-
-/**
- * Load translations and set current locale. Call once at entry (e.g. mod, client).
+ * Create web3 i18n instance and set locale. Call once at entry (e.g. mod, client).
+ * Does not call install(); uses module instance only.
  */
 export function initWeb3I18n(): void {
-  ensureWeb3I18n();
-  $i18n.setLocale(detectLocale());
+  if (web3I18n) return;
+  const i18n = createI18n({
+    defaultLocale: DEFAULT_LOCALE,
+    fallbackBehavior: "default",
+    locales: [...WEB3_LOCALES],
+    translations: LOCALE_DATA as Record<string, TranslationData>,
+  });
+  i18n.setLocale(detectLocale());
+  web3I18n = i18n;
 }
 
 /**
- * Translate by key. When lang is not passed, uses current locale (set at entry).
- * Do not call ensure/init inside $t; call initWeb3I18n() at entry.
+ * Translate by key. Uses module instance; when lang is not passed, uses current locale.
+ * When init not called, returns key.
  */
-export function $t(
+export function $tr(
   key: string,
-  params?: TranslationParams,
+  params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
+  if (!web3I18n) return key;
   if (lang !== undefined) {
-    const prev = $i18n.getLocale();
-    $i18n.setLocale(lang);
+    const prev = web3I18n.getLocale();
+    web3I18n.setLocale(lang);
     try {
-      return $i18n.t(key, params);
+      return web3I18n.t(key, params as TranslationParams);
     } finally {
-      $i18n.setLocale(prev);
+      web3I18n.setLocale(prev);
     }
   }
-  return $i18n.t(key, params);
+  return web3I18n.t(key, params as TranslationParams);
 }

@@ -3,15 +3,18 @@
 /**
  * 构建浏览器版本的客户端 bundle
  *
- * 将 src/client/mod.ts 及其所有依赖（包括 viem）打包成单个 ESM 文件
- * 用户可以直接在浏览器中通过 <script type="module"> 引用
+ * 将 src/client/mod.ts 及其依赖打包成 ESM 文件。
+ * - 默认构建：包含 viem，单文件即可使用。
+ * - external 构建：不包含 viem，需通过 import map 或 bundler 提供 viem，体积更小。
  *
  * 使用方法：
  *   deno run -A build-browser.ts
  *
  * 输出：
- *   dist/web3-client.esm.js      - 完整版（含 sourcemap）
- *   dist/web3-client.esm.min.js  - 压缩版
+ *   dist/web3-client.esm.js              - 完整版（含 sourcemap）
+ *   dist/web3-client.esm.min.js           - 压缩版（含 viem）
+ *   dist/web3-client.esm.external.min.js  - 压缩版（viem 外置，体积更小）
+ *   dist/meta.json                        - 体积分析用 metafile（用于 https://esbuild.github.io/analyze/）
  */
 
 import * as esbuild from "npm:esbuild@0.19.12";
@@ -19,58 +22,72 @@ import { dirname, resolve } from "jsr:@std/path@1";
 
 // 获取当前脚本所在目录作为项目根目录
 const ROOT = dirname(new URL(import.meta.url).pathname);
+const DIST = resolve(ROOT, "dist");
 
 // 确保 dist 目录存在
-await Deno.mkdir(resolve(ROOT, "dist"), { recursive: true });
+await Deno.mkdir(DIST, { recursive: true });
+
+const entry = resolve(ROOT, "src/client/mod.ts");
+const common = {
+  entryPoints: [entry],
+  bundle: true,
+  format: "esm" as const,
+  platform: "browser" as const,
+  target: ["es2020", "chrome90", "firefox88", "safari14"],
+  treeShaking: true,
+  define: {
+    "process.env.NODE_ENV": '"production"',
+    "global": "globalThis",
+  },
+  logLevel: "info" as const,
+};
 
 console.log("[build-browser] 开始构建客户端 bundle...");
 
 // 1. 构建完整版（带 sourcemap）
 await esbuild.build({
-  entryPoints: [resolve(ROOT, "src/client/mod.ts")],
-  bundle: true,
-  format: "esm",
-  outfile: resolve(ROOT, "dist/web3-client.esm.js"),
-  platform: "browser",
-  target: ["es2020", "chrome90", "firefox88", "safari14"],
+  ...common,
+  outfile: resolve(DIST, "web3-client.esm.js"),
   sourcemap: true,
   minify: false,
-  treeShaking: true,
-  // 将所有依赖打包进来（包括 viem）
   external: [],
-  // 定义环境变量（避免某些库的 Node.js 检测）
-  define: {
-    "process.env.NODE_ENV": '"production"',
-    "global": "globalThis",
-  },
-  // 日志级别
-  logLevel: "info",
 });
-
 console.log("[build-browser] ✅ dist/web3-client.esm.js");
 
-// 2. 构建压缩版
-await esbuild.build({
-  entryPoints: [resolve(ROOT, "src/client/mod.ts")],
-  bundle: true,
-  format: "esm",
-  outfile: resolve(ROOT, "dist/web3-client.esm.min.js"),
-  platform: "browser",
-  target: ["es2020", "chrome90", "firefox88", "safari14"],
+// 2. 构建压缩版（含 viem），并生成 metafile 便于体积分析
+const minResult = await esbuild.build({
+  ...common,
+  outfile: resolve(DIST, "web3-client.esm.min.js"),
   sourcemap: false,
   minify: true,
-  treeShaking: true,
+  legalComments: "none", // 移除 license 等注释，减小体积
+  drop: ["debugger"], // 移除 debugger 语句
   external: [],
-  define: {
-    "process.env.NODE_ENV": '"production"',
-    "global": "globalThis",
-  },
-  logLevel: "info",
+  metafile: true,
 });
-
 console.log("[build-browser] ✅ dist/web3-client.esm.min.js");
 
-// 3. 生成类型声明文件（重新导出 TypeScript 源文件的类型）
+if (minResult.metafile) {
+  await Deno.writeTextFile(
+    resolve(DIST, "meta.json"),
+    JSON.stringify(minResult.metafile, null, 2),
+  );
+  console.log(
+    "[build-browser] ✅ dist/meta.json（可上传至 https://esbuild.github.io/analyze/ 查看体积构成）",
+  );
+}
+
+// 3. 构建 external 版（viem 外置，体积更小；使用时需通过 import map 或 bundler 提供 viem）
+await esbuild.build({
+  ...common,
+  outfile: resolve(DIST, "web3-client.esm.external.min.js"),
+  sourcemap: false,
+  minify: true,
+  external: ["viem"],
+});
+console.log("[build-browser] ✅ dist/web3-client.esm.external.min.js");
+
+// 4. 生成类型声明文件（完整版与 external 版共用同一类型）
 const dtsContent = `/**
  * 客户端 Web3 操作类型声明
  * 此文件从 TypeScript 源文件重新导出类型
@@ -78,26 +95,29 @@ const dtsContent = `/**
 export * from "../src/client/mod.ts";
 `;
 
-// 为完整版和压缩版都生成类型声明
+await Deno.writeTextFile(resolve(DIST, "web3-client.esm.d.ts"), dtsContent);
 await Deno.writeTextFile(
-  resolve(ROOT, "dist/web3-client.esm.d.ts"),
+  resolve(DIST, "web3-client.esm.min.d.ts"),
   dtsContent,
 );
 await Deno.writeTextFile(
-  resolve(ROOT, "dist/web3-client.esm.min.d.ts"),
+  resolve(DIST, "web3-client.esm.external.min.d.ts"),
   dtsContent,
 );
+console.log("[build-browser] ✅ dist/*.d.ts");
 
-console.log("[build-browser] ✅ dist/web3-client.esm.d.ts");
-console.log("[build-browser] ✅ dist/web3-client.esm.min.d.ts");
-
-// 获取文件大小
-const stats = await Deno.stat(resolve(ROOT, "dist/web3-client.esm.min.js"));
-const sizeKB = (stats.size / 1024).toFixed(1);
-const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-
-console.log(`[build-browser] 压缩后大小: ${sizeKB} KB (${sizeMB} MB)`);
+// 输出体积
+const fmt = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
+const minStats = await Deno.stat(resolve(DIST, "web3-client.esm.min.js"));
+const extStats = await Deno.stat(
+  resolve(DIST, "web3-client.esm.external.min.js"),
+);
+console.log(
+  `[build-browser] 压缩版（含 viem）: ${fmt(minStats.size)}`,
+);
+console.log(
+  `[build-browser] 压缩版（viem 外置）: ${fmt(extStats.size)}`,
+);
 console.log("[build-browser] ✅ 构建完成！");
 
-// 清理
 esbuild.stop();

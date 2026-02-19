@@ -461,7 +461,27 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Client (browser)
 
-For browser / wallet usage see [client/README.md](./src/client/README.md).
+- **Entry**: `jsr:@dreamer/web3/client` — single ESM bundle including viem (~300
+  KB minified).
+- **Smaller bundle**: `jsr:@dreamer/web3/client/external` — same API but **viem
+  is not bundled**; you must provide `viem` via import map or your bundler so
+  the runtime can resolve it. Use this when you already depend on viem or want a
+  smaller initial download.
+
+  Example import map (browser):
+
+  ```json
+  {
+    "imports": {
+      "viem": "https://esm.sh/viem@2",
+      "jsr:@dreamer/web3/client/external": "https://esm.sh/jsr/@dreamer/web3/client/external"
+    }
+  }
+  ```
+
+  Build script outputs: `dist/web3-client.esm.min.js` (full),
+  `dist/web3-client.esm.external.min.js` (external), and `dist/meta.json` for
+  [bundle analysis](https://esbuild.github.io/analyze/).
 
 ---
 
@@ -480,13 +500,11 @@ For browser / wallet usage see [client/README.md](./src/client/README.md).
 
 ## Changelog
 
-**[1.0.6]** - 2026-02-18
-
-- **Added**: Web3Manager & ServiceContainer, readProperty, returnJson, i18n
-  (zh-CN/en-US), wssUrl, ExtendedTransactionReceipt. **Changed**: returnJson
-  rename, client ESM build, gas/receipt handling. **Fixed**: fromWei/toWei
-  precision, overload matching, block scan. See
-  [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.0.7** (2026-02-19): **Added** – Client export `./client/external` (viem
+external, ~12 KB); client utils and dedicated client contract proxy (no i18n).
+**Changed** – i18n `$t` → `$tr`; client build minify options; README Client
+(browser) and zh-CN docs. See
+[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

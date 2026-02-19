@@ -1,10 +1,11 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
-    "./client": "./dist/web3-client.esm.min.js"
+    "./client": "./dist/web3-client.esm.min.js",
+    "./client/external": "./dist/web3-client.esm.external.min.js"
   },
   "tasks": {
     "test": "bun test -A tests/*",
@@ -24,7 +25,8 @@
       "**/*.test.ts",
       "**/*.spec.ts",
       "**/test/**",
-      "**/tests/**"
+      "**/tests/**",
+      "dist/meta.json"
     ]
   },
   "lint": {
@@ -41,10 +43,11 @@
     }
   },
   "imports": {
-    "viem": "npm:viem@^2.46.1",
+    "viem": "npm:viem@2.46.2",
     "@dreamer/i18n": "jsr:@dreamer/i18n@^1.0.1",
-    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.9",
-    "@dreamer/service": "jsr:@dreamer/service@^1.0.0",
-    "@dreamer/test": "jsr:@dreamer/test@^1.0.7"
-  }
+    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.14",
+    "@dreamer/service": "jsr:@dreamer/service@^1.0.1",
+    "@dreamer/test": "jsr:@dreamer/test@^1.0.8"
+  },
+  "nodeModulesDir": "auto"
 }
