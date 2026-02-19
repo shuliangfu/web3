@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [1.0.8] - 2026-02-19
+
+### Documentation
+
+- **Client (browser)** size clarification in README and docs: default bundle
+  ~294 KB minified, **~70 KB** with Brotli; external bundle ~12–13 KB minified.
+  Reduces concern over apparent bundle size.
+
+---
+
 ## [1.0.7] - 2026-02-19
 
 ### Added
