@@ -461,12 +461,12 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Client (browser)
 
-- **Entry**: `jsr:@dreamer/web3/client` — single ESM bundle including viem (~300
-  KB minified).
+- **Entry**: `jsr:@dreamer/web3/client` — single ESM bundle including viem (~294
+  KB minified; **~70 KB** over the wire with Brotli). Safe to use as-is.
 - **Smaller bundle**: `jsr:@dreamer/web3/client/external` — same API but **viem
-  is not bundled**; you must provide `viem` via import map or your bundler so
-  the runtime can resolve it. Use this when you already depend on viem or want a
-  smaller initial download.
+  is not bundled** (~**12–13 KB** minified, smaller with Brotli). You must
+  provide `viem` via import map or your bundler. Use when you already depend on
+  viem or want a smaller initial download.
 
   Example import map (browser):
 
@@ -500,10 +500,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Changelog
 
-**v1.0.7** (2026-02-19): **Added** – Client export `./client/external` (viem
-external, ~12 KB); client utils and dedicated client contract proxy (no i18n).
-**Changed** – i18n `$t` → `$tr`; client build minify options; README Client
-(browser) and zh-CN docs. See
+**v1.0.8** (2026-02-19): **Docs** – Client bundle size clarification: ~294 KB
+minified, ~70 KB with Brotli; external ~12–13 KB. See
 [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

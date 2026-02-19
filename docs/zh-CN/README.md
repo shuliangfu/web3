@@ -591,11 +591,12 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 🌐 客户端支持（浏览器）
 
-- **默认入口**：`jsr:@dreamer/web3/client` — 单文件 ESM 包（含 viem），压缩后约
-  300 KB。
+- **默认入口**：`jsr:@dreamer/web3/client` — 单文件 ESM 包（含 viem）。体积约
+  294 KB（minified），开启 Brotli 后实际传输约 **70 KB**，可直接使用。
 - **更小体积**：`jsr:@dreamer/web3/client/external` — API 相同，但**不打包
-  viem**；需通过 import map 或自己的打包工具提供
-  `viem`，运行时才能解析。适用于已依赖 viem 或希望减少首包体积的场景。
+  viem**（本包约 **12–13 KB** minified，Brotli 后更小）；需通过 import map
+  或自己的打包工具提供 `viem`，运行时才能解析。适用于已依赖 viem 或希望
+  进一步减少首包体积的场景。
 
   浏览器 import map 示例：
 
@@ -628,9 +629,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**v1.0.7**（2026-02-19）：**新增** – 客户端导出 `./client/external`（viem
-外置，约 12 KB）；客户端工具与独立客户端合约代理（无 i18n）。**变更** – i18n
-`$t` → `$tr`；客户端构建压缩选项；README 客户端（浏览器）与中文文档。详见
+**v1.0.8**（2026-02-19）：**文档** – 客户端体积说明：约 294
+KB（minified），Brotli 约 70 KB；external 约 12–13 KB。详见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
