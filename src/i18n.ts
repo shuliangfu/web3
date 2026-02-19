@@ -54,11 +54,8 @@ export function detectLocale(): Locale {
   return DEFAULT_LOCALE;
 }
 
-/**
- * Create web3 i18n instance and set locale. Call once at entry (e.g. mod, client).
- * Does not call install(); uses module instance only.
- */
-export function initWeb3I18n(): void {
+/** 内部初始化，导入 i18n 时自动执行，不导出 */
+function initWeb3I18n(): void {
   if (web3I18n) return;
   const i18n = createI18n({
     defaultLocale: DEFAULT_LOCALE,
@@ -70,6 +67,8 @@ export function initWeb3I18n(): void {
   web3I18n = i18n;
 }
 
+initWeb3I18n();
+
 /**
  * Translate by key. Uses module instance; when lang is not passed, uses current locale.
  * When init not called, returns key.
@@ -79,6 +78,7 @@ export function $tr(
   params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
+  if (!web3I18n) initWeb3I18n();
   if (!web3I18n) return key;
   if (lang !== undefined) {
     const prev = web3I18n.getLocale();

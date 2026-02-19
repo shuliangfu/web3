@@ -461,20 +461,23 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Client (browser)
 
-- **Entry**: `jsr:@dreamer/web3/client` — single ESM bundle including viem (~294
-  KB minified; **~70 KB** over the wire with Brotli). Safe to use as-is.
-- **Smaller bundle**: `jsr:@dreamer/web3/client/external` — same API but **viem
-  is not bundled** (~**12–13 KB** minified, smaller with Brotli). You must
-  provide `viem` via import map or your bundler. Use when you already depend on
-  viem or want a smaller initial download.
+- **Entry (recommended)**: `jsr:@dreamer/web3/client` — TypeScript source
+  entrypoint. Bundle it in your app (Vite, esbuild, etc.) for best type-checking
+  and tree-shaking.
+- **Pre-built full bundle**: `jsr:@dreamer/web3/client/bundle` — single ESM
+  bundle including viem (~294 KB minified; **~70 KB** with Brotli). Use when you
+  don’t bundle the client yourself.
+- **Pre-built smaller bundle**: `jsr:@dreamer/web3/client/bundle/external` —
+  same API but **viem is not bundled** (~**12–13 KB** minified). You must
+  provide `viem` via import map or your bundler.
 
-  Example import map (browser):
+  Example import map (browser, for pre-built external):
 
   ```json
   {
     "imports": {
       "viem": "https://esm.sh/viem@2",
-      "jsr:@dreamer/web3/client/external": "https://esm.sh/jsr/@dreamer/web3/client/external"
+      "jsr:@dreamer/web3/client/bundle/external": "https://esm.sh/jsr/@dreamer/web3/client/bundle/external"
     }
   }
   ```
@@ -500,9 +503,9 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Changelog
 
-**v1.0.8** (2026-02-19): **Docs** – Client bundle size clarification: ~294 KB
-minified, ~70 KB with Brotli; external ~12–13 KB. See
-[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.0.9** (2026-02-20): **Changed** – Dependencies bump; i18n auto-init; client
+entrypoints (./client = TS source, ./client/bundle and ./client/bundle/external
+for pre-built). See [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

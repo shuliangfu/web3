@@ -13,6 +13,16 @@
 
 ---
 
+## 入口路径
+
+| 路径                                       | 说明                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| `jsr:@dreamer/web3/client`                 | TypeScript 源码（推荐），在应用内自行打包。                         |
+| `jsr:@dreamer/web3/client/bundle`          | 预构建 ESM 包（含 viem），约 294 KB minified。                      |
+| `jsr:@dreamer/web3/client/bundle/external` | 预构建 ESM（viem 外置），约 12–13 KB；需通过 import map 提供 viem。 |
+
+---
+
 ## 📦 安装
 
 ### Deno

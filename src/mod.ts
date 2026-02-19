@@ -1,18 +1,12 @@
 /**
- * Web3 操作辅助类（服务端版本）
- * 提供 Web3 相关的操作功能，如 RPC 调用、合约交互、交易处理等
+ * @module @dreamer/web3
  *
- * 环境兼容性：
- * - 服务端：通过 RPC URL 连接区块链网络
- * - 需要配置 rpcUrl 和 privateKey（用于发送交易）
- * - 不支持钱包连接、消息签名等客户端功能
- *
- * API 使用说明：
- * - 使用 viem 库来与区块链交互
- * - 通过 HTTP transport 连接 RPC 节点
- *
- * 依赖：
- * - 需要安装 viem: npm:viem@^2.43.5
+ * Server-side Web3 helper for Deno and Bun. This module defines:
+ * **Web3Client** (RPC, contract read/write, blocks, transactions, signing),
+ * **Web3Manager** (multi-client management, service container integration),
+ * **createWeb3Client** / **createWeb3Manager** factory functions, and re-exports
+ * of utility types and functions (Unit, fromWei, toWei, formatAddress, etc.).
+ * Requires RPC URL and optional privateKey; uses viem with HTTP/WebSocket transport.
  */
 
 // 导入 viem 核心模块
@@ -50,9 +44,7 @@ import {
   type ContractsProxy,
 } from "./internal/contract-proxy.ts";
 import type { ServiceContainer } from "@dreamer/service";
-import { $tr, initWeb3I18n } from "./i18n.ts";
-
-initWeb3I18n();
+import { $tr } from "./i18n.ts";
 
 /**
  * 区块事件回调函数类型
