@@ -2,14 +2,11 @@
 
 > Server-side Web3 helper for Deno and Bun: RPC calls and contract interaction
 
+English | [中文 (Chinese)](./docs/zh-CN/README.md)
+
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
-
-**Full docs (中文)**: [docs/zh-CN/README.md](./docs/zh-CN/README.md) · **Test
-report**: [docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) ·
-**Changelog**: [EN](./docs/en-US/CHANGELOG.md) |
-[中文](./docs/zh-CN/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./docs/zh-CN/TEST_REPORT.md)
 
 ---
 
@@ -461,30 +458,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Client (browser)
 
-- **Entry (recommended)**: `jsr:@dreamer/web3/client` — TypeScript source
-  entrypoint. Bundle it in your app (Vite, esbuild, etc.) for best type-checking
-  and tree-shaking.
-- **Pre-built full bundle**: `jsr:@dreamer/web3/client/bundle` — single ESM
-  bundle including viem (~294 KB minified; **~70 KB** with Brotli). Use when you
-  don’t bundle the client yourself.
-- **Pre-built smaller bundle**: `jsr:@dreamer/web3/client/bundle/external` —
-  same API but **viem is not bundled** (~**12–13 KB** minified). You must
-  provide `viem` via import map or your bundler.
-
-  Example import map (browser, for pre-built external):
-
-  ```json
-  {
-    "imports": {
-      "viem": "https://esm.sh/viem@2",
-      "jsr:@dreamer/web3/client/bundle/external": "https://esm.sh/jsr/@dreamer/web3/client/bundle/external"
-    }
-  }
-  ```
-
-  Build script outputs: `dist/web3-client.esm.min.js` (full),
-  `dist/web3-client.esm.external.min.js` (external), and `dist/meta.json` for
-  [bundle analysis](https://esbuild.github.io/analyze/).
+- **Entry**: `jsr:@dreamer/web3/client` — TypeScript source entrypoint. Bundle
+  it in your app (Vite, esbuild, etc.) for type-checking and tree-shaking.
 
 ---
 
@@ -503,9 +478,10 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Changelog
 
-**v1.0.9** (2026-02-20): **Changed** – Dependencies bump; i18n auto-init; client
-entrypoints (./client = TS source, ./client/bundle and ./client/bundle/external
-for pre-built). See [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.0.10** (2026-02-21): **Removed** – `./client/bundle` and
+`./client/bundle/external` exports. **Docs** – EN/zh-CN sync; root README links
+to Chinese doc, Chinese doc links to English. See
+[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

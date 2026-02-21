@@ -1,12 +1,10 @@
 {
   "name": "@dreamer/web3",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
-    "./client": "./src/client/mod.ts",
-    "./client/bundle": "./dist/web3-client.esm.min.js",
-    "./client/bundle/external": "./dist/web3-client.esm.external.min.js"
+    "./client": "./src/client/mod.ts"
   },
   "tasks": {
     "test": "bun test -A tests/*",

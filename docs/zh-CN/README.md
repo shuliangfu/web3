@@ -2,11 +2,11 @@
 
 > 服务端 Web3 操作辅助包，兼容 Deno 和 Bun 运行时，支持 RPC 调用和合约交互
 
+[English](../../README.md) | 中文 (Chinese)
+
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
 [![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](../en-US/TEST_REPORT.md)
-
-**变更日志**：[CHANGELOG.md](./CHANGELOG.md)（[English](../en-US/CHANGELOG.md)）
 
 ---
 
@@ -591,28 +591,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 🌐 客户端支持（浏览器）
 
-- **推荐入口**：`jsr:@dreamer/web3/client` — TypeScript 源码入口，由你在应用内
-  自行打包（Vite、esbuild 等），类型与 tree-shaking 最佳。
-- **预构建完整包**：`jsr:@dreamer/web3/client/bundle` — 单文件 ESM 包（含
-  viem），约 294 KB（minified），Brotli 后约 **70 KB**，不自行打包时可直接使用。
-- **预构建小体积包**：`jsr:@dreamer/web3/client/bundle/external` — API 相同，但
-  **不打包 viem**（本包约 **12–13 KB** minified）；需通过 import map 或打包工具
-  提供 `viem`。
-
-  浏览器 import map 示例（预构建 external）：
-
-  ```json
-  {
-    "imports": {
-      "viem": "https://esm.sh/viem@2",
-      "jsr:@dreamer/web3/client/bundle/external": "https://esm.sh/jsr/@dreamer/web3/client/bundle/external"
-    }
-  }
-  ```
-
-  构建产物：`dist/web3-client.esm.min.js`（完整版）、`dist/web3-client.esm.external.min.js`（external
-  版），以及用于[体积分析](https://esbuild.github.io/analyze/)的
-  `dist/meta.json`。
+- **入口**：`jsr:@dreamer/web3/client` — TypeScript 源码入口，在应用内自行打包
+  （Vite、esbuild 等）以获得类型检查与 tree-shaking。
 
 ---
 
@@ -630,9 +610,9 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**v1.0.9**（2026-02-20）：**变更** – 依赖升级；i18n
-自动初始化；客户端入口调整（./client 为 TS 源码，./client/bundle 与
-./client/bundle/external 为预构建包）。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.10**（2026-02-21）：**移除** – `./client/bundle` 与
+`./client/bundle/external` 导出。**文档** – 中英文同步；根 README
+链接中文文档，中文文档链接英文。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
