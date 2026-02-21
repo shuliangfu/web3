@@ -8,6 +8,23 @@ and this project adheres to
 
 ---
 
+## [1.0.10] - 2026-02-21
+
+### Removed
+
+- **Exports**: `./client/bundle` and `./client/bundle/external` entrypoints
+  removed from package exports. Use `./client` (TypeScript source) and bundle in
+  your app.
+
+### Documentation
+
+- **Sync**: README and client docs no longer reference pre-built bundles;
+  EN/zh-CN docs aligned. Root README links to Chinese doc; Chinese doc links to
+  English.
+- **Changelog (README)**: Updated to reflect v1.0.10.
+
+---
+
 ## [1.0.9] - 2026-02-20
 
 ### Changed
