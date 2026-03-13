@@ -8,6 +8,17 @@ and this project adheres to
 
 ---
 
+## [1.1.0] - 2026-03-14
+
+### Changed
+
+- **Client**: `connectWallet()` now eagerly initializes `publicClient` and
+  `walletClient` after a successful account request, so the client instance is
+  fully ready for `readContract` / `callContract` and debuggers show non-null
+  values.
+
+---
+
 ## [1.0.10] - 2026-02-21
 
 ### Removed

@@ -478,9 +478,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Changelog
 
-**v1.0.10** (2026-02-21): **Removed** – `./client/bundle` and
-`./client/bundle/external` exports. **Docs** – EN/zh-CN sync; root README links
-to Chinese doc, Chinese doc links to English. See
+**v1.1.0** (2026-03-14): **Changed** – Client `connectWallet()` eagerly
+initializes `publicClient` and `walletClient` after success. See
 [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

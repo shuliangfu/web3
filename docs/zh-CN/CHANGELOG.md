@@ -7,6 +7,16 @@
 
 ---
 
+## [1.1.0] - 2026-03-14
+
+### 变更
+
+- **客户端**：`connectWallet()` 在成功获取账户后会立即初始化 `publicClient` 与
+  `walletClient`，连接完成后实例即可用于 `readContract` / `callContract`，调试时
+  对象状态完整。
+
+---
+
 ## [1.0.10] - 2026-02-21
 
 ### 移除

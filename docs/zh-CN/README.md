@@ -610,9 +610,9 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**v1.0.10**（2026-02-21）：**移除** – `./client/bundle` 与
-`./client/bundle/external` 导出。**文档** – 中英文同步；根 README
-链接中文文档，中文文档链接英文。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.0**（2026-03-14）：**变更** – 客户端 `connectWallet()`
+在连接成功后立即初始化 `publicClient` 与 `walletClient`。详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
