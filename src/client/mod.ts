@@ -278,6 +278,7 @@ export class Web3Client {
 
   /**
    * 连接钱包（浏览器环境）
+   * 成功后会预初始化 publicClient / walletClient，便于后续 readContract 等调用及调试时对象状态完整
    * @returns 钱包地址数组
    */
   async connectWallet(): Promise<string[]> {
@@ -289,8 +290,12 @@ export class Web3Client {
     try {
       const accounts = await win.ethereum.request({
         method: "eth_requestAccounts",
-      });
-      return accounts as string[];
+      }) as string[];
+      if (accounts?.length > 0) {
+        this.getPublicClient();
+        this.getWalletClient();
+      }
+      return accounts;
     } catch (error) {
       throw new Error(
         `连接钱包失败: ${
