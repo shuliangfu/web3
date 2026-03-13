@@ -478,8 +478,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## Changelog
 
-**v1.1.0** (2026-03-14): **Changed** – Client `connectWallet()` eagerly
-initializes `publicClient` and `walletClient` after success. See
+**v1.1.1** (2026-03-14): **Changed** – ContractConfig field `name` renamed to
+`contractName` (client and server). See
 [docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

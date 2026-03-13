@@ -29,7 +29,7 @@ describe("Web3", () => {
         rpcUrl: config.host,
         chainId: config.chainId,
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: usdtAbi.address,
           abi: usdtAbi.abi,
         },
@@ -53,7 +53,7 @@ describe("Web3", () => {
         rpcUrl: config.host,
         chainId: config.chainId,
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: usdtAbi.address,
           abi: usdtAbi.abi,
         },
@@ -484,7 +484,7 @@ describe("Web3", () => {
           rpcUrl: config.host,
           chainId: config.chainId,
           contracts: {
-            name: "USDT",
+            contractName: "USDT",
             address: usdtAbi.address,
             abi: usdtAbi.abi,
           },
@@ -509,7 +509,7 @@ describe("Web3", () => {
           chainId: config.chainId,
           privateKey: config.privateKey,
           contracts: {
-            name: "USDT",
+            contractName: "USDT",
             address: usdtAbi.address,
             abi: usdtAbi.abi,
           },
@@ -786,7 +786,7 @@ describe("Web3", () => {
           rpcUrl: config.host,
           chainId: config.chainId,
           contracts: {
-            name: "TestContract",
+            contractName: "TestContract",
             address: usdtAbi.address,
             abi: overloadedAbi as any,
           },
@@ -827,7 +827,7 @@ describe("Web3", () => {
           rpcUrl: config.host,
           chainId: config.chainId,
           contracts: {
-            name: "USDT",
+            contractName: "USDT",
             address: usdtAbi.address,
             abi: usdtAbi.abi,
           },
@@ -903,7 +903,7 @@ describe("Web3", () => {
           rpcUrl: config.host,
           chainId: config.chainId,
           contracts: {
-            name: "USDT",
+            contractName: "USDT",
             address: usdtAbi.address,
             abi: usdtAbi.abi,
           },
@@ -1077,7 +1077,7 @@ describe("Web3", () => {
           privateKey: config.privateKey,
           wssUrl: config.wss, // 使用 WebSocket 进行事件监听
           contracts: {
-            name: "USDT",
+            contractName: "USDT",
             address: usdtAbi.address,
             abi: usdtAbi.abi,
           },

@@ -32,7 +32,7 @@ export interface IWeb3ClientForProxy {
  * 与 client 的 ContractConfig 兼容
  */
 export interface ContractConfigForProxy {
-  name: string;
+  contractName: string;
   address: string;
   abi: Abi | Array<Record<string, unknown>>;
 }
@@ -122,7 +122,7 @@ export class ContractProxy {
 
   /** 获取合约名称 */
   get name(): string {
-    return this.contractConfig.name;
+    return this.contractConfig.contractName;
   }
 }
 
@@ -152,20 +152,20 @@ export function buildContractsProxy(
   }
   const list = Array.isArray(contracts) ? contracts : [contracts];
   for (const contract of list) {
-    if (!contract.name) {
-      throw new Error("Contract name is required.");
+    if (!contract.contractName) {
+      throw new Error("Contract contractName is required.");
     }
     if (!contract.address) {
       throw new Error(
-        `Contract "${contract.name}" must have an "address" field.`,
+        `Contract "${contract.contractName}" must have an "address" field.`,
       );
     }
     if (!contract.abi) {
       throw new Error(
-        `Contract "${contract.name}" must have an "abi" field.`,
+        `Contract "${contract.contractName}" must have an "abi" field.`,
       );
     }
-    contractsProxy[contract.name] = new ContractProxy(client, contract);
+    contractsProxy[contract.contractName] = new ContractProxy(client, contract);
   }
   return contractsProxy;
 }

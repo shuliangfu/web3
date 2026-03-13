@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [1.1.1] - 2026-03-14
+
+### Changed
+
+- **ContractConfig**: Renamed field `name` to `contractName` (client and
+  server). Aligns with common contract metadata; `ContractProxy` getter `name`
+  still returns the contract name for backward compatibility.
+
+---
+
 ## [1.1.0] - 2026-03-14
 
 ### Changed
