@@ -610,9 +610,8 @@ const balance = await ethClient.getBalance("0x...");
 
 ## 变更日志
 
-**v1.1.0**（2026-03-14）：**变更** – 客户端 `connectWallet()`
-在连接成功后立即初始化 `publicClient` 与 `walletClient`。详见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.1**（2026-03-14）：**变更** – ContractConfig 字段 `name` 更名为
+`contractName`（客户端与服务端）。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

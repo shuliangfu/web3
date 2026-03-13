@@ -146,7 +146,7 @@ describe("客户端 Web3Client", () => {
     it("应该创建带合约配置的客户端实例", () => {
       const client = new Web3Client({
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           abi: [],
         },
@@ -256,7 +256,7 @@ describe("客户端 Web3Client", () => {
     beforeAll(async () => {
       client = new Web3Client({
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           abi: [
             {
@@ -558,7 +558,7 @@ describe("客户端 Web3Client", () => {
 
       const clientWithContract = new Web3Client({
         contracts: {
-          name: "TestContract",
+          contractName: "TestContract",
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           abi: overloadedAbi as any,
         },
@@ -606,7 +606,7 @@ describe("客户端 Web3Client", () => {
 
       const clientWithContract = new Web3Client({
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           abi: [
             {
@@ -715,7 +715,7 @@ describe("客户端 Web3Client", () => {
 
       const clientWithContract = new Web3Client({
         contracts: {
-          name: "USDT",
+          contractName: "USDT",
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
           abi: [
             {

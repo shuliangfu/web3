@@ -65,7 +65,7 @@ export type ChainChangedListener = (chainId: string) => void | Promise<void>;
  */
 export interface ContractConfig {
   /** 合约名称（用于访问，如 "USDT"、"Node"） */
-  name: string;
+  contractName: string;
   /** 合约地址 */
   address: string;
   /** 合约 ABI */

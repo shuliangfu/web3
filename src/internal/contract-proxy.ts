@@ -33,7 +33,7 @@ export interface IWeb3ClientForProxy {
  * 与 mod/client 的 ContractConfig 兼容
  */
 export interface ContractConfigForProxy {
-  name: string;
+  contractName: string;
   address: string;
   abi: Abi | Array<Record<string, unknown>>;
 }
@@ -128,7 +128,7 @@ export class ContractProxy {
 
   /** 获取合约名称 */
   get name(): string {
-    return this.contractConfig.name;
+    return this.contractConfig.contractName;
   }
 }
 
@@ -158,22 +158,24 @@ export function buildContractsProxy(
   }
   const list = Array.isArray(contracts) ? contracts : [contracts];
   for (const contract of list) {
-    if (!contract.name) {
+    if (!contract.contractName) {
       throw new Error($tr("errors.contractNameRequired"));
     }
     if (!contract.address) {
       throw new Error(
         $tr("errors.contractAddressFieldRequired", {
-          contractName: contract.name,
+          contractName: contract.contractName,
         }),
       );
     }
     if (!contract.abi) {
       throw new Error(
-        $tr("errors.contractAbiFieldRequired", { contractName: contract.name }),
+        $tr("errors.contractAbiFieldRequired", {
+          contractName: contract.contractName,
+        }),
       );
     }
-    contractsProxy[contract.name] = new ContractProxy(client, contract);
+    contractsProxy[contract.contractName] = new ContractProxy(client, contract);
   }
   return contractsProxy;
 }
