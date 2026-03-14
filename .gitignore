@@ -11,6 +11,7 @@ bun.lock
 
 # 构建输出
 build/
+dist/
 out/
 
 # 环境变量
