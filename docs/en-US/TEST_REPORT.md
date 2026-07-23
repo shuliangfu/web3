@@ -2,35 +2,38 @@
 
 ## Test Overview
 
-### Test Statistics
+| Item                | Value                                                                  |
+| ------------------- | --------------------------------------------------------------------- |
+| **Package version** | `@dreamer/web3@1.2.0`                                                 |
+| **Command**         | Deno: `deno test -A tests/utils.test.ts tests/client-mod.test.ts` · Bun: `bun test tests/utils.test.ts tests/client-mod.test.ts` · Node: `npm run test:node` |
+| **Environment**     | Deno 2.9+ / Bun 1.3+ / Node.js 22+                                    |
+| **Test framework**  | `@dreamer/test@^1.2.3`                                                |
+| **Total tests**     | 61 (Deno) / 58 (Bun) / 58 (Node) — unit tests only                   |
+| **Passed**          | 61 / 58 / 58                                                          |
+| **Failed**          | 0 / 0 / 0                                                             |
 
-- **Total tests**: 139 (Deno)
-- **Passed**: 139 (100%)
-- **Failed**: 0
-- **Test files**: 3
-- **Test code lines**: ~2,800+
-- **Execution time**: ~10s (Deno)
+> The Deno test runner counts 3 framework teardown steps in the total, so Deno
+> reports 61 while Bun/Node report 58; the business `it()` cases are identical
+> across runtimes, all with 0 failures.
+>
+> **Note**: `tests/mod.test.ts` is an Anvil integration suite (requires a local
+> `http://127.0.0.1:8545` node). It is excluded from CI and available via
+> `deno task test:integration`.
 
-### Test Environment
+### Test Files (CI / unit)
 
-- **Package version**: @dreamer/web3@1.0.6-beta.11
-- **Service container**: @dreamer/service@1.0.0-beta.4
-- **Test framework**: @dreamer/test (Deno and Bun compatible)
-- **Test date**: 2026-01-30
-- **Environment**:
-  - **Deno**: 2.6.5
-  - **Bun**: 1.3.5
-  - **Blockchain**: Anvil local test network (Chain ID: 31337)
+| Test file            | Tests | Description                           |
+| -------------------- | ----- | ------------------------------------- |
+| `utils.test.ts`      | 33    | Address/wei/format/utility functions  |
+| `client-mod.test.ts` | 28    | Client Web3Client (mock `window.ethereum`) |
 
-### Test Files
+### Test Files (integration, not in CI)
 
-| Test file            | Tests (Deno) | Description                                                    |
-| -------------------- | ------------ | -------------------------------------------------------------- |
-| `mod.test.ts`        | 82           | Server Web3Client + Web3Manager + ServiceContainer integration |
-| `client-mod.test.ts` | 27           | Client Web3Client (mock environment)                           |
-| `utils.test.ts`      | 30           | Web3 utility functions                                         |
+| Test file     | Tests (Deno) | Description                                                    |
+| ------------- | ------------ | -------------------------------------------------------------- |
+| `mod.test.ts` | 82           | Server Web3Client + Web3Manager + ServiceContainer integration |
 
-**Total**: 3 test files, 139 test cases, all passed ✅
+**Note**: Integration tests require a running Anvil node at `http://127.0.0.1:8545`.
 
 ## Test Results
 

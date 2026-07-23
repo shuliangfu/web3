@@ -7,6 +7,37 @@
 
 ---
 
+## [1.2.0] - 2026-07-23
+
+### 新增
+
+- **Node.js 兼容**：web3 现可在 Node 22+ 运行。`src/` 使用 `viem`（纯 JS、
+  运行时无关）加跨运行时 Web API，无 `Deno.*` 调用。
+- **Node.js 测试基建**：新增 `tsconfig.json`、`ci.yml`（9-job：3 Deno v2.9 +
+  3 Bun + 3 Node 22），`test:node` 由 `tsx --test --test-force-exit` 驱动。
+  CI 仅运行单元测试（`utils.test.ts` + `client-mod.test.ts`）；`mod.test.ts`
+  集成测试套件需本地 Anvil 节点（`http://127.0.0.1:8545`），可通过
+  `deno task test:integration` 运行。
+
+### 变更
+
+- **src/mod.ts**：重连定时器类型由 `number` 改为
+  `ReturnType<typeof setTimeout>`（`blockReconnectTimer`、
+  `transactionReconnectTimer`、`contractReconnectTimers` Map 值类型），Node 上
+  解析为 `NodeJS.Timeout`。移除 3 处 `setTimeout` 赋值上的
+  `as unknown as number` 强转。
+- **依赖**：`@dreamer/i18n` ^1.1.2、`@dreamer/runtime-adapter` ^1.2.2、
+  `@dreamer/service` ^1.1.0、`@dreamer/test` ^1.2.3。
+- **deno.json**：新增 `minimumDependencyAge: 0`；`test` 拆分为 `test`（单元）
+  与 `test:integration`（Anvil）。
+- **.gitignore**：新增 `package-lock.json`。
+
+### 兼容性
+
+- Deno 2.9+ / Bun 1.3+ / Node.js 22+
+
+---
+
 ## [1.1.1] - 2026-03-14
 
 ### 变更
