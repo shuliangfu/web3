@@ -1,19 +1,19 @@
 # @dreamer/web3
 
-> Server-side Web3 helper for Deno and Bun: RPC calls and contract interaction
+> Server-side Web3 helper for Deno, Bun and Node.js: RPC calls and contract interaction
 
 English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./docs/zh-CN/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-58%20passed%20(3%20runtimes)-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
 ## Features
 
 Server-side Web3 abstraction: RPC calls, contract read/write, and utilities for
-Deno and Bun.
+Deno, Bun and Node.js 22+.
 
 ---
 
@@ -31,17 +31,27 @@ deno add jsr:@dreamer/web3
 bunx jsr add @dreamer/web3
 ```
 
+### Node.js
+
+```bash
+npx jsr add @dreamer/web3
+```
+
+> Requires Node.js 22+. The package reuses the global `fetch` / Web `crypto`
+> available in Node 22+, and `viem` (runtime-agnostic) for all chain access.
+
 ---
 
 ## Compatibility
 
 | Environment    | Version | Status                                                        |
 | -------------- | ------- | ------------------------------------------------------------- |
-| **Deno**       | 2.6+    | ✅ Supported                                                  |
-| **Bun**        | 1.3.5+  | ✅ Supported                                                  |
-| **Server**     | -       | ✅ RPC via URL (Deno/Bun)                                     |
+| **Deno**       | 2.9+    | ✅ Supported                                                  |
+| **Bun**        | 1.3+    | ✅ Supported                                                  |
+| **Node.js**    | 22+     | ✅ Supported (since v1.2.0)                                   |
+| **Server**     | -       | ✅ RPC via URL (Deno/Bun/Node)                                |
 | **Client**     | -       | ✅ Browser via `jsr:@dreamer/web3/client` (wallet connection) |
-| **Dependency** | -       | 📦 Requires `npm:viem@^2.43.3`                                |
+| **Dependency** | -       | 📦 Requires `npm:viem@^2.46.2`                                |
 
 ---
 

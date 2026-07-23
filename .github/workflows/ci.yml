@@ -1,0 +1,171 @@
+# CI: 在 macOS、Ubuntu、Windows 上运行 Deno / Bun / Node 三端测试，验证跨运行时兼容性
+# 注意：tests/mod.test.ts 为 Anvil 集成测试（需本地 http://127.0.0.1:8545 节点），
+#       CI 仅运行单元测试（utils.test.ts + client-mod.test.ts）。
+name: CI
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Deno 三平台测试（linux 同时负责 check / lint）
+  # ─────────────────────────────────────────────────────────────
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        run: deno cache src/mod.ts src/client/mod.ts tests/utils.test.ts tests/client-mod.test.ts 2>/dev/null || true
+
+      - name: Check
+        run: deno check src/mod.ts src/client/mod.ts
+
+      - name: Lint
+        run: deno lint
+
+      - name: Test (Deno)
+        run: deno test -A --no-check tests/utils.test.ts tests/client-mod.test.ts
+
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        run: deno cache src/mod.ts src/client/mod.ts tests/utils.test.ts tests/client-mod.test.ts 2>/dev/null || true
+
+      - name: Test (Deno, macOS)
+        run: deno test -A --no-check tests/utils.test.ts tests/client-mod.test.ts
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        run: deno cache src/mod.ts src/client/mod.ts tests/utils.test.ts tests/client-mod.test.ts
+
+      - name: Test (Deno, Windows)
+        run: deno test -A --no-check tests/utils.test.ts tests/client-mod.test.ts
+
+  # ─────────────────────────────────────────────────────────────
+  # Bun 三平台测试
+  # web3 依赖 viem + i18n / runtime-adapter / service；bun install 解析 package.json
+  # ─────────────────────────────────────────────────────────────
+  test-linux-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (Bun)
+        run: bun install
+
+      - name: Test (Bun)
+        run: bun test tests/utils.test.ts tests/client-mod.test.ts
+
+  test-macos-bun:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (Bun)
+        run: bun install
+
+      - name: Test (Bun, macOS)
+        run: bun test tests/utils.test.ts tests/client-mod.test.ts
+
+  test-windows-bun:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (Bun)
+        run: bun install
+
+      - name: Test (Bun, Windows)
+        run: bun test tests/utils.test.ts tests/client-mod.test.ts
+
+  # ─────────────────────────────────────────────────────────────
+  # Node.js 三平台测试
+  # test:node 脚本：tsx --tsconfig tsconfig.json --test --test-force-exit tests/utils.test.ts tests/client-mod.test.ts
+  #   - tsx 作为 TypeScript loader，驱动 Node 原生 node:test runner
+  #   - .npmrc 的 @jsr registry 别名让 npm install 解析 @dreamer/* 依赖
+  # ─────────────────────────────────────────────────────────────
+  test-linux-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies (Node)
+        run: npm install
+
+      - name: Test (Node)
+        run: npm run test:node
+        timeout-minutes: 10
+
+  test-macos-node:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies (Node)
+        run: npm install
+
+      - name: Test (Node, macOS)
+        run: npm run test:node
+        timeout-minutes: 10
+
+  test-windows-node:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies (Node)
+        run: npm install
+
+      - name: Test (Node, Windows)
+        run: npm run test:node
+        timeout-minutes: 10

@@ -1,18 +1,19 @@
 # @dreamer/web3
 
-> 服务端 Web3 操作辅助包，兼容 Deno 和 Bun 运行时，支持 RPC 调用和合约交互
+> 服务端 Web3 操作辅助包，兼容 Deno、Bun 和 Node.js 运行时，支持 RPC 调用和合约交互
 
 [English](../../README.md) | 中文 (Chinese)
 
 [![JSR](https://jsr.io/badges/@dreamer/web3)](https://jsr.io/@dreamer/web3)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](../en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-58%20passed%20(三端)-brightgreen)](../en-US/TEST_REPORT.md)
 
 ---
 
 ## 🎯 功能
 
-服务端 Web3 操作辅助包，提供统一的 Web3 抽象层，支持 RPC 调用和合约交互。
+服务端 Web3 操作辅助包，提供统一的 Web3 抽象层，支持 RPC 调用和合约交互，
+兼容 Deno、Bun 与 Node.js 22+。
 
 ---
 
@@ -30,17 +31,27 @@ deno add jsr:@dreamer/web3
 bunx jsr add @dreamer/web3
 ```
 
+### Node.js
+
+```bash
+npx jsr add @dreamer/web3
+```
+
+> 需要 Node.js 22+。包复用 Node 22+ 全局已提供的 `fetch` / Web `crypto`，
+> 链访问全部经 `viem`（运行时无关）。
+
 ---
 
 ## 🌍 环境兼容性
 
 | 环境       | 版本要求 | 状态                                                                |
 | ---------- | -------- | ------------------------------------------------------------------- |
-| **Deno**   | 2.6+     | ✅ 完全支持                                                         |
-| **Bun**    | 1.3.5+   | ✅ 完全支持                                                         |
-| **服务端** | -        | ✅ 支持（兼容 Deno 和 Bun 运行时，通过 RPC URL 连接区块链网络）     |
+| **Deno**   | 2.9+     | ✅ 完全支持                                                         |
+| **Bun**    | 1.3+     | ✅ 完全支持                                                         |
+| **Node.js**| 22+      | ✅ 完全支持（自 v1.2.0 起）                                         |
+| **服务端** | -        | ✅ 支持（兼容 Deno/Bun/Node，通过 RPC URL 连接区块链网络）          |
 | **客户端** | -        | ✅ 支持（浏览器环境，通过 `jsr:@dreamer/web3/client` 使用钱包连接） |
-| **依赖**   | -        | 📦 需要 `npm:viem@^2.43.3`                                          |
+| **依赖**   | -        | 📦 需要 `npm:viem@^2.46.2`                                          |
 
 ---
 

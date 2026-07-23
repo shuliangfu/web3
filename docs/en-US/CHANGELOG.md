@@ -8,6 +8,37 @@ and this project adheres to
 
 ---
 
+## [1.2.0] - 2026-07-23
+
+### Added
+
+- **Node.js compatibility**: web3 now runs on Node 22+. `src/` uses `viem` (pure
+  JS, runtime-agnostic) plus cross-runtime Web APIs; no `Deno.*` usages.
+- **Node.js test infra**: Added `tsconfig.json`, `ci.yml` (9-job: 3 Deno v2.9 +
+  3 Bun + 3 Node 22); `test:node` driven by `tsx --test --test-force-exit`.
+  CI runs unit tests only (`utils.test.ts` + `client-mod.test.ts`); the
+  `mod.test.ts` integration suite requires a local Anvil node
+  (`http://127.0.0.1:8545`) and is available via `deno task test:integration`.
+
+### Changed
+
+- **src/mod.ts**: Reconnect timer types changed from `number` to
+  `ReturnType<typeof setTimeout>` (`blockReconnectTimer`,
+  `transactionReconnectTimer`, `contractReconnectTimers` Map value type) —
+  resolves to `NodeJS.Timeout` on Node. Removed three `as unknown as number`
+  casts on `setTimeout` assignments.
+- **Dependencies**: `@dreamer/i18n` ^1.1.2, `@dreamer/runtime-adapter` ^1.2.2,
+  `@dreamer/service` ^1.1.0, `@dreamer/test` ^1.2.3.
+- **deno.json**: Added `minimumDependencyAge: 0`; split `test` task into
+  `test` (unit) and `test:integration` (Anvil).
+- **.gitignore**: Added `package-lock.json`.
+
+### Compatibility
+
+- Deno 2.9+ / Bun 1.3+ / Node.js 22+
+
+---
+
 ## [1.1.1] - 2026-03-14
 
 ### Changed

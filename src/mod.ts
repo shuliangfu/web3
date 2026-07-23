@@ -39,12 +39,12 @@ import {
   getErrorMessage,
 } from "./utils.ts";
 // 内部合约代理（不通过 exports 暴露）
+import type { ServiceContainer } from "@dreamer/service";
+import { $tr } from "./i18n.ts";
 import {
   buildContractsProxy,
   type ContractsProxy,
 } from "./internal/contract-proxy.ts";
-import type { ServiceContainer } from "@dreamer/service";
-import { $tr } from "./i18n.ts";
 
 /**
  * 区块事件回调函数类型
@@ -221,9 +221,10 @@ export class Web3Client {
   private transactionWatchUnsubscribe?: () => void;
   private contractWatchUnsubscribes: Map<string, () => void> = new Map();
   // 自动重连相关
-  private blockReconnectTimer?: number;
-  private transactionReconnectTimer?: number;
-  private contractReconnectTimers: Map<string, number> = new Map();
+  private blockReconnectTimer?: ReturnType<typeof setTimeout>;
+  private transactionReconnectTimer?: ReturnType<typeof setTimeout>;
+  private contractReconnectTimers: Map<string, ReturnType<typeof setTimeout>> =
+    new Map();
   private reconnectDelay: number = 3000; // 重连延迟（毫秒）
   private maxReconnectAttempts: number = 10; // 最大重连次数
   private blockReconnectAttempts: number = 0;
@@ -1309,7 +1310,7 @@ export class Web3Client {
         );
         this.scheduleBlockReconnect();
       }
-    }, delay) as unknown as number;
+    }, delay);
   }
 
   /**
@@ -1460,7 +1461,7 @@ export class Web3Client {
         );
         this.scheduleTransactionReconnect();
       }
-    }, delay) as unknown as number;
+    }, delay);
   }
 
   /**
@@ -1816,7 +1817,7 @@ export class Web3Client {
         );
         this.scheduleContractReconnect(contractAddress, eventName, abi);
       }
-    }, delay) as unknown as number;
+    }, delay);
 
     this.contractReconnectTimers.set(key, timer);
   }
