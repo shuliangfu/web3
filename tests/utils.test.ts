@@ -29,7 +29,6 @@ import {
   toChecksumAddress,
   toWei,
 } from "../src/utils.ts";
-import config from "./data/config.ts";
 
 describe("Web3 Utils", () => {
   describe("单位转换", () => {
@@ -271,11 +270,11 @@ describe("Web3 Utils", () => {
 
   describe("合约代码（需要 RPC）", () => {
     it("应该获取合约代码", async () => {
-      // 使用配置中的地址（如果有合约）
+      // 使用 Anvil 默认测试账户与本地节点；RPC 不可用时 try/catch 跳过
       try {
         const code = await getCode(
-          config.address,
-          config.host,
+          "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "http://127.0.0.1:8545",
         );
         expect(code).toBeTruthy();
         expect(typeof code).toBe("string");
